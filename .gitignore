@@ -1,0 +1,68 @@
+# ===========================
+# Node modules (all subprojects)
+# ===========================
+**/node_modules/
+
+# ===========================
+# Environment variables (SENSITIVE - jangan di-commit!)
+# ===========================
+**/.env
+**/.env.local
+**/.env.production
+**/.env.staging
+
+# ===========================
+# Build output
+# ===========================
+**/dist/
+**/build/
+**/dist-ssr/
+
+# ===========================
+# Logs
+# ===========================
+**/*.log
+**/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===========================
+# Editor / OS files
+# ===========================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===========================
+# Docker override (environment-specific)
+# ===========================
+docker-compose.override.yml
+.docker/
+
+# ===========================
+# WhatsApp Web JS cache
+# ===========================
+**/.wwebjs_auth/
+**/.wwebjs_cache/
+
+# ===========================
+# Upload & document folders (user-generated content)
+# ===========================
+**/src/public/documents/*
+**/src/public/uploads/*
+**/src/logs/*
+
+# ===========================
+# Package lock (opsional, uncomment jika tidak ingin di-track)
+# ===========================
+# package-lock.json
+# yarn.lock
