@@ -1,0 +1,1444 @@
+﻿<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BPJS Safe Analyzer - Pencegahan Penolakan Klaim</title>
+  <meta name="description" content="Sistem analisis dan validasi klaim BPJS berbasis AI untuk mencegah penolakan klaim. Clinical coherence check, INA-CBG linkage validator, risk assessment real-time." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            primary: { DEFAULT: '#1e40af' },
+            success: { DEFAULT: '#059669' },
+            warning: { DEFAULT: '#d97706' },
+            danger:  { DEFAULT: '#dc2626' },
+            info:    { DEFAULT: '#0891b2' },
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:'Inter',sans-serif;background:#f1f5f9;}
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-track{background:#f1f5f9;}
+    ::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:4px;}
+    .nav-item{transition:all 0.2s ease;}
+    .nav-item:hover,.nav-item.active{background:rgba(255,255,255,0.15);border-radius:10px;}
+    .nav-item.active{background:rgba(255,255,255,0.22);box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+    .card{background:white;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.07),0 4px 16px rgba(0,0,0,0.04);transition:box-shadow 0.2s ease;}
+    .card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.1);}
+    .card-ai{border-left:4px solid #3b82f6;}
+    .card-doctor{border-left:4px solid #059669;}
+    .card-warn{border-left:4px solid #dc2626;}
+    .card-amber{border-left:4px solid #d97706;}
+    .stat-blue{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);}
+    .stat-green{background:linear-gradient(135deg,#047857 0%,#10b981 100%);}
+    .stat-amber{background:linear-gradient(135deg,#b45309 0%,#f59e0b 100%);}
+    .stat-red{background:linear-gradient(135deg,#b91c1c 0%,#ef4444 100%);}
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600;}
+    .badge-primary{background:#dbeafe;color:#1e40af;}
+    .badge-success{background:#d1fae5;color:#047857;}
+    .badge-warning{background:#fef3c7;color:#92400e;}
+    .badge-danger{background:#fee2e2;color:#b91c1c;}
+    .badge-info{background:#cffafe;color:#0e7490;}
+    .badge-gray{background:#f1f5f9;color:#475569;}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s ease;border:none;}
+    .btn:disabled{opacity:0.45;cursor:not-allowed;}
+    .btn-primary{background:#1e40af;color:white;}
+    .btn-primary:hover:not(:disabled){background:#1e3a8a;transform:translateY(-1px);box-shadow:0 4px 14px rgba(30,64,175,0.4);}
+    .btn-success{background:#059669;color:white;}
+    .btn-success:hover:not(:disabled){background:#047857;transform:translateY(-1px);box-shadow:0 4px 14px rgba(5,150,105,0.4);}
+    .btn-danger{background:#dc2626;color:white;}
+    .btn-danger:hover:not(:disabled){background:#b91c1c;}
+    .btn-outline{background:transparent;border:1.5px solid #e2e8f0;color:#374151;}
+    .btn-outline:hover{background:#f8fafc;border-color:#94a3b8;}
+    .btn-ghost{background:transparent;color:#6b7280;}
+    .btn-ghost:hover{background:#f1f5f9;color:#374151;}
+    .form-input{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:14px;color:#1f2937;background:#fff;transition:border-color 0.2s,box-shadow 0.2s;outline:none;}
+    .form-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+    .form-input.error{border-color:#dc2626;}
+    .form-label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px;}
+    .required::after{content:' *';color:#dc2626;}
+    .alert{border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:flex-start;gap:10px;}
+    .alert-danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;}
+    .alert-warning{background:#fffbeb;border:1px solid #fde68a;color:#92400e;}
+    .alert-success{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;}
+    .alert-info{background:#f0f9ff;border:1px solid #bae6fd;color:#075985;}
+    .progress-bar{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;}
+    .progress-fill{height:100%;border-radius:999px;transition:width 0.5s ease;}
+    .risk-ring{position:relative;display:inline-flex;align-items:center;justify-content:center;}
+    .risk-ring svg{transform:rotate(-90deg);}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .animate-fadeInUp{animation:fadeInUp 0.35s ease both;}
+    .animate-pulse{animation:pulse 2s infinite;}
+    #sidebar{background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 60%,#1e40af 100%);min-height:100vh;transition:width 0.3s ease;}
+    .tab-btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;color:#6b7280;background:transparent;border:none;white-space:nowrap;}
+    .tab-btn.active{background:#1e40af;color:white;box-shadow:0 2px 8px rgba(30,64,175,0.35);}
+    .tab-btn:hover:not(.active){background:#f1f5f9;color:#374151;}
+    .diag-card{border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;transition:all 0.2s;cursor:pointer;}
+    .diag-card:hover{border-color:#3b82f6;background:#f0f9ff;}
+    .diag-card.selected{border-color:#059669;background:#f0fdf4;}
+    .diag-card.selected-primary{border-color:#1e40af;background:#eff6ff;}
+    #toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
+    .toast{padding:12px 18px;border-radius:10px;color:white;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,0.15);animation:fadeInUp 0.3s ease;min-width:260px;}
+    .toast-success{background:#059669;}
+    .toast-error{background:#dc2626;}
+    .toast-warning{background:#d97706;}
+    .toast-info{background:#0891b2;}
+    .dropdown-item{padding:10px 14px;cursor:pointer;font-size:13px;transition:background 0.15s;border-bottom:1px solid #f1f5f9;}
+    .dropdown-item:last-child{border-bottom:none;}
+    .dropdown-item:hover{background:#f0f9ff;}
+    .loader{display:inline-block;width:20px;height:20px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;}
+    .loader-dark{border-color:rgba(0,0,0,0.12);border-top-color:#3b82f6;}
+    .mono{font-family:'Courier New',monospace;}
+    .sidebar-mini #sidebar .nav-label{display:none;}
+    .sidebar-mini #sidebar .sidebar-logo-text{display:none;}
+    .sidebar-mini #sidebar{width:72px;}
+    .sidebar-mini #main-content{margin-left:72px!important;}
+  </style>
+</head>
+<body class="h-full bg-slate-50">
+<div id="toast-container"></div>
+<div id="app" class="flex min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="fixed top-0 left-0 w-64 flex flex-col z-40 select-none">
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+      <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-shield-heart text-white"></i>
+      </div>
+      <div class="sidebar-logo-text">
+        <div class="text-white font-bold text-sm">BPJS Safe</div>
+        <div class="text-blue-200 text-xs">Analyzer Pro</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+      <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-user-doctor text-white text-xs"></i>
+      </div>
+      <div class="sidebar-logo-text overflow-hidden">
+        <div id="sidebar-username" class="text-white text-xs font-semibold truncate">Dr. User</div>
+        <div class="text-blue-200 text-xs">Dokter</div>
+      </div>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1">
+      <button onclick="navigateTo('dashboard')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-blue-100" data-page="dashboard">
+        <i class="fa-solid fa-gauge-high w-5 text-center text-sm"></i>
+        <span class="nav-label text-sm font-medium">Dashboard</span>
+      </button>
+      <button onclick="navigateTo('new-analysis')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-blue-100" data-page="new-analysis">
+        <i class="fa-solid fa-plus-circle w-5 text-center text-sm"></i>
+        <span class="nav-label text-sm font-medium">Analisis Baru</span>
+      </button>
+      <button onclick="navigateTo('encounters')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-blue-100" data-page="encounters">
+        <i class="fa-solid fa-stethoscope w-5 text-center text-sm"></i>
+        <span class="nav-label text-sm font-medium">Encounters</span>
+      </button>
+      <button onclick="navigateTo('diagnosis-validation')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-blue-100" data-page="diagnosis-validation">
+        <i class="fa-solid fa-microscope w-5 text-center text-sm"></i>
+        <span class="nav-label text-sm font-medium">Validasi Diagnosis</span>
+      </button>
+      <button onclick="navigateTo('transactions')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-blue-100" data-page="transactions">
+        <i class="fa-solid fa-receipt w-5 text-center text-sm"></i>
+        <span class="nav-label text-sm font-medium">Transaksi</span>
+      </button>
+    </nav>
+    <div class="px-3 py-4 border-t border-white/10">
+      <button onclick="logout()" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 text-red-200">
+        <i class="fa-solid fa-arrow-right-from-bracket w-5 text-center text-sm"></i>
+        <span class="nav-label text-sm font-medium">Keluar</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main id="main-content" class="flex-1 ml-64 flex flex-col min-h-screen">
+    <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-700 p-1">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <div>
+          <h1 id="page-title" class="text-base font-bold text-slate-800">Dashboard</h1>
+          <p id="page-subtitle" class="text-xs text-slate-500">Sistem Pencegahan Penolakan Klaim BPJS</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="risk-alert-badge" class="hidden">
+          <span class="badge badge-danger animate-pulse">
+            <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+            <span id="risk-alert-count">0</span> Risk Alert
+          </span>
+        </div>
+        <div class="text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border">
+          <i class="fa-regular fa-clock mr-1"></i><span id="current-time"></span>
+        </div>
+      </div>
+    </header>
+    <div id="page-content" class="flex-1 p-6"></div>
+  </main>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="login-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div class="p-8">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-shield-heart text-white text-2xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">BPJS Safe Analyzer</h2>
+        <p class="text-slate-500 text-sm mt-1">Masuk untuk mengakses sistem</p>
+      </div>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="form-label required">Username</label>
+            <input id="login-username" type="text" class="form-input" placeholder="Username" required />
+          </div>
+          <div>
+            <label class="form-label required">Password</label>
+            <input id="login-password" type="password" class="form-input" placeholder="Password" required />
+          </div>
+          <div id="login-error" class="hidden alert alert-danger text-xs">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="login-error-msg">Login gagal</span>
+          </div>
+          <button type="submit" id="login-btn" class="btn btn-primary w-full justify-center py-3">Masuk</button>
+        </div>
+      </form>
+      <p class="mt-4 text-center text-xs text-slate-400">Gunakan akun yang terdaftar di server</p>
+    </div>
+  </div>
+</div>
+
+<!-- DIAG SEARCH MODAL -->
+<div id="diag-search-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div class="p-5 border-b flex items-center justify-between">
+      <h3 class="font-bold text-slate-800"><i class="fa-solid fa-search mr-2 text-blue-600"></i>Cari Diagnosis ICD-10</h3>
+      <button onclick="closeDiagModal()" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100"><i class="fa-solid fa-times"></i></button>
+    </div>
+    <div class="p-4 border-b">
+      <input id="diag-search-input" type="text" class="form-input" placeholder="Ketik nama penyakit atau kode ICD-10..." oninput="searchDiag(this.value)" />
+    </div>
+    <div id="diag-search-results" class="flex-1 overflow-y-auto p-3">
+      <p class="text-center text-slate-400 text-sm py-8">Ketik minimal 2 karakter</p>
+    </div>
+    <div class="p-4 border-t text-xs text-slate-400"><i class="fa-solid fa-database mr-1"></i>Dari master diagnosis (mrconso + diagnosis_master)</div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div class="p-6">
+      <div id="confirm-icon" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-amber-100">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl"></i>
+      </div>
+      <h3 id="confirm-title" class="text-center font-bold text-slate-800 text-lg mb-2">Konfirmasi</h3>
+      <p id="confirm-message" class="text-center text-slate-500 text-sm"></p>
+      <div class="flex gap-3 mt-6">
+        <button onclick="closeConfirm()" class="btn btn-outline flex-1 justify-center">Batal</button>
+        <button id="confirm-ok-btn" class="btn btn-danger flex-1 justify-center">Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+//  STATE
+// ================================================================
+var API_BASE = 'http://localhost:3000/api';
+var state = {
+  token: localStorage.getItem('token') || '',
+  user: JSON.parse(localStorage.getItem('user') || '{}'),
+  currentPage: 'dashboard',
+  currentAnalysis: null,
+  selectedPrimaryDiagnosis: null,
+  selectedSecondaryDiagnoses: [],
+  selectedTreatments: [],
+  documentChecklist: {
+    has_medical_resume: false, has_lab_results: false, has_imaging: false,
+    has_specialist_consultation: false, has_iv_therapy_proof: false,
+    has_daily_care_notes: false, has_min_5day_inpatient: false, severity_level: null
+  },
+  validation: { isValid: false, errors: [], warnings: [], riskScore: 100, riskLevel: 'high' },
+  diagCb: null, encounters: [], transactions: [],
+};
+
+// ================================================================
+//  UTILITIES
+// ================================================================
+function fmtRp(n) {
+  if (!n && n !== 0) return 'N/A';
+  return 'Rp ' + Number(n).toLocaleString('id-ID');
+}
+function fmtDate(s) {
+  if (!s) return '-';
+  return new Date(s).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'});
+}
+function toast(msg, type, dur) {
+  type = type||'info'; dur = dur||3500;
+  var c = document.getElementById('toast-container');
+  var icons = {success:'fa-check-circle',error:'fa-times-circle',warning:'fa-triangle-exclamation',info:'fa-circle-info'};
+  var t = document.createElement('div');
+  t.className = 'toast toast-'+type;
+  t.innerHTML = '<i class="fa-solid '+(icons[type]||icons.info)+'"></i><span>'+msg+'</span>';
+  c.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(120%)';t.style.transition='all 0.3s';setTimeout(function(){t.remove();},350);},dur);
+}
+function confirm2(title, msg, okFn, type) {
+  type=type||'warning';
+  var im={warning:'fa-triangle-exclamation',danger:'fa-circle-xmark',info:'fa-circle-question'};
+  var cm={warning:'bg-amber-100',danger:'bg-red-100',info:'bg-blue-100'};
+  var tc={warning:'text-amber-500',danger:'text-red-500',info:'text-blue-500'};
+  var bm={warning:'btn-warning',danger:'btn-danger',info:'btn-primary'};
+  document.getElementById('confirm-icon').className='w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 '+(cm[type]||cm.warning);
+  document.getElementById('confirm-icon').innerHTML='<i class="fa-solid '+(im[type]||im.warning)+' '+(tc[type]||tc.warning)+' text-xl"></i>';
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-message').textContent=msg;
+  var btn=document.getElementById('confirm-ok-btn');
+  btn.className='btn '+(bm[type]||'btn-warning')+' flex-1 justify-center';
+  btn.onclick=function(){closeConfirm();okFn();};
+  var m=document.getElementById('confirm-modal');
+  m.classList.remove('hidden');m.classList.add('flex');
+}
+function closeConfirm(){
+  var m=document.getElementById('confirm-modal');
+  m.classList.add('hidden');m.classList.remove('flex');
+}
+setInterval(function(){
+  var el=document.getElementById('current-time');
+  if(el) el.textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+},1000);
+
+// ================================================================
+//  AUTH
+// ================================================================
+async function handleLogin(e) {
+  e.preventDefault();
+  var btn=document.getElementById('login-btn');
+  var errDiv=document.getElementById('login-error');
+  btn.innerHTML='<span class="loader"></span> Masuk...';
+  btn.disabled=true;
+  errDiv.classList.add('hidden');
+  try {
+    var res=await fetch(API_BASE+'/v1/user/login',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:document.getElementById('login-username').value,password:document.getElementById('login-password').value})
+    });
+    var data=await res.json();
+    if(res.ok&&data.data&&data.data.token){
+      state.token=data.data.token;
+      state.user=data.data.user||{username:document.getElementById('login-username').value};
+      localStorage.setItem('token',state.token);
+      localStorage.setItem('user',JSON.stringify(state.user));
+      document.getElementById('login-modal').style.display='none';
+      document.getElementById('sidebar-username').textContent=state.user.name||state.user.username||'Dokter';
+      toast('Selamat datang!','success');
+      navigateTo('dashboard');
+    } else {
+      throw new Error(data.message||(data.error&&data.error.message)||'Login gagal');
+    }
+  } catch(err){
+    document.getElementById('login-error-msg').textContent=err.message;
+    errDiv.classList.remove('hidden');
+  } finally {
+    btn.innerHTML='Masuk';btn.disabled=false;
+  }
+}
+function logout(){
+  confirm2('Keluar','Yakin ingin keluar?',function(){
+    state.token='';state.user={};
+    localStorage.removeItem('token');localStorage.removeItem('user');
+    document.getElementById('login-modal').style.display='flex';
+  },'warning');
+}
+
+// ================================================================
+//  API
+// ================================================================
+async function apiFetch(path, opts) {
+  opts=opts||{};
+  var hdrs=Object.assign({'Content-Type':'application/json'},opts.headers||{});
+  if(state.token) hdrs['Authorization']='Bearer '+state.token;
+  var res=await fetch(API_BASE+path,Object.assign({},opts,{headers:hdrs}));
+  var data={};
+  try{data=await res.json();}catch(e){}
+  if(res.status===401){toast('Sesi habis, login ulang','warning');document.getElementById('login-modal').style.display='flex';throw new Error('Unauth');}
+  return {ok:res.ok,status:res.status,data};
+}
+
+// ================================================================
+//  NAV
+// ================================================================
+function navigateTo(page, params) {
+  params=params||{};
+  state.currentPage=page;
+  document.querySelectorAll('.nav-item').forEach(function(el){el.classList.toggle('active',el.dataset.page===page);});
+  var T={
+    'dashboard':['Dashboard','Ringkasan sistem dan statistik klaim'],
+    'new-analysis':['Analisis Baru','Input data SOAP pasien untuk analisis AI'],
+    'encounters':['Encounters','Daftar kunjungan dan riwayat analisis'],
+    'diagnosis-validation':['Validasi Diagnosis','Panel validasi diagnosis, tindakan, dokumen dan klaim'],
+    'transactions':['Transaksi BPJS','Riwayat transaksi dan status klaim'],
+  };
+  var inf=T[page]||[page,''];
+  document.getElementById('page-title').textContent=inf[0];
+  document.getElementById('page-subtitle').textContent=inf[1];
+  var c=document.getElementById('page-content');
+  c.innerHTML='<div class="flex items-center justify-center h-48"><div class="loader loader-dark" style="width:32px;height:32px;border-width:3px;"></div></div>';
+  var R={
+    'dashboard':renderDashboard,'new-analysis':renderNewAnalysis,'encounters':renderEncounters,
+    'diagnosis-validation':renderDiagnosisValidation,'transactions':renderTransactions
+  };
+  var fn=R[page];
+  if(fn) setTimeout(function(){fn(params);c.classList.add('animate-fadeInUp');setTimeout(function(){c.classList.remove('animate-fadeInUp');},500);},100);
+}
+function toggleSidebar(){document.body.classList.toggle('sidebar-mini');}
+
+// ================================================================
+//  DOC REQUIREMENTS
+// ================================================================
+var DOC_REQ = {
+  1:{
+    has_medical_resume:{label:'Resume Medis Lengkap',required:true,note:'ICD + Tindakan + Kronologi'},
+    has_lab_results:{label:'Hasil Laboratorium',required:false,recommended:true,note:'Disarankan Level 1'},
+    has_imaging:{label:'Radiologi / Imaging',required:false,note:'Opsional'},
+    has_specialist_consultation:{label:'Konsultasi Dokter Spesialis',required:false,note:'Opsional'},
+    has_iv_therapy_proof:{label:'Bukti Terapi IV',required:false,note:'Opsional'},
+    has_daily_care_notes:{label:'Catatan Harian Perawatan',required:false,note:'Opsional'},
+    has_min_5day_inpatient:{label:'Surat Rawat Inap >= 5 Hari',required:false,note:'Opsional'},
+  },
+  2:{
+    has_medical_resume:{label:'Resume Medis Lengkap',required:true,note:'ICD + Tindakan + Kronologi'},
+    has_lab_results:{label:'Hasil Laboratorium',required:true,note:'WAJIB Level 2'},
+    has_imaging:{label:'Radiologi / Imaging',required:false,recommended:true,note:'Disarankan Level 2'},
+    has_specialist_consultation:{label:'Konsultasi Dokter Spesialis',required:true,note:'WAJIB Level 2'},
+    has_iv_therapy_proof:{label:'Bukti Terapi IV',required:false,note:'Opsional'},
+    has_daily_care_notes:{label:'Catatan Harian Perawatan',required:false,recommended:true,note:'Disarankan Level 2'},
+    has_min_5day_inpatient:{label:'Surat Rawat Inap >= 5 Hari',required:false,note:'Opsional'},
+  },
+  3:{
+    has_medical_resume:{label:'Resume Medis Lengkap',required:true,note:'WAJIB Level 3'},
+    has_lab_results:{label:'Hasil Laboratorium',required:true,note:'WAJIB Level 3'},
+    has_imaging:{label:'Radiologi / Imaging',required:true,note:'WAJIB Level 3'},
+    has_specialist_consultation:{label:'Konsultasi Dokter Spesialis',required:true,note:'WAJIB Level 3'},
+    has_iv_therapy_proof:{label:'Bukti Terapi IV',required:true,note:'WAJIB jika ada terapi IV'},
+    has_daily_care_notes:{label:'Catatan Harian Perawatan',required:true,note:'WAJIB Level 3'},
+    has_min_5day_inpatient:{label:'Surat Rawat Inap >= 5 Hari',required:false,recommended:true,note:'Disarankan Level 3'},
+  }
+};
+
+// ================================================================
+//  INACBG LINKAGE CHECK
+// ================================================================
+function checkLinkage(diagCode, inacbg) {
+  if(!diagCode||!inacbg) return true;
+  var ch=(diagCode.charAt(0)||'').toUpperCase();
+  var ic=(inacbg.charAt(0)||'').toUpperCase();
+  var map={
+    'A':['A','P'],'B':['A','P'],'C':['C'],'D':['D'],'E':['E','N'],
+    'F':['F'],'G':['G'],'H':['H'],'I':['I'],'J':['J'],'K':['K'],
+    'L':['L'],'M':['M'],'N':['N'],'O':['O'],'P':['P'],'Q':['Q'],
+    'R':['R','P'],'S':['S','T'],'T':['S','T'],'Z':['Z'],
+  };
+  var allowed=map[ch]||[];
+  if(allowed.length===0) return true;
+  return allowed.indexOf(ic)>=0;
+}
+
+// ================================================================
+//  COHERENCE CHECK
+// ================================================================
+function checkCoherence() {
+  var primary=state.selectedPrimaryDiagnosis;
+  var analysis=state.currentAnalysis;
+  if(!primary||!analysis) return {score:0,status:'unknown',items:[],warnings:[]};
+  var soaText=((analysis.subjective||'')+' '+(analysis.objective||'')+' '+(analysis.assessment||'')).toLowerCase();
+  var items=[];var warnings=[];var score=100;
+  items.push({ok:!!primary.fromMaster,msg:primary.fromMaster?'Diagnosis dari master database':'Diagnosis TIDAK dari master database'});
+  if(!primary.fromMaster) score-=20;
+  var kwMap={
+    'A':['infeksi','diare','gastro','muntah','demam','bakteri','virus','parasit'],
+    'B':['infeksi','virus','parasit'],
+    'C':['kanker','tumor','malignan','karsinoma'],
+    'D':['anemia','darah','platelet'],
+    'E':['diabetes','gula','tiroid','hormon','dehidrasi'],
+    'F':['jiwa','psikis','depresi','ansietas'],
+    'G':['saraf','otak','stroke','kejang'],
+    'H':['mata','telinga','visus'],
+    'I':['jantung','kardio','hipertensi','koroner'],
+    'J':['napas','paru','asma','bronkitis','pneumonia','sesak'],
+    'K':['perut','pencernaan','lambung','hepatitis','usus'],
+    'L':['kulit','gatal','ruam'],
+    'M':['sendi','tulang','otot','artritis','fraktur'],
+    'N':['ginjal','urin','kandung kemih'],
+    'O':['hamil','persalinan','obstetri'],
+    'R':['demam','nyeri','gejala'],
+    'S':['luka','trauma','cedera','fraktur'],
+  };
+  var ch=(primary.code||'').charAt(0).toUpperCase();
+  var kws=kwMap[ch]||[];
+  if(kws.length>0){
+    var matches=kws.filter(function(kw){return soaText.indexOf(kw)>=0;}).length;
+    var coherent=matches>=1;
+    items.push({ok:coherent,msg:coherent?'Gejala SOAP sesuai chapter ICD-10 "'+ch+'" ('+matches+' kata kunci match)':'Gejala SOAP tidak cocok chapter ICD-10 "'+ch+'"'});
+    if(!coherent){score-=30;warnings.push('Diagnosis ['+primary.code+'] tidak didukung gejala dalam SOAP');}
+  } else {
+    items.push({ok:true,msg:'Chapter ICD-10 tidak perlu validasi kata kunci spesifik'});
+  }
+  var secs=state.selectedSecondaryDiagnoses;
+  if(secs.length>0){
+    var relMap={'A':['A','B','E','R'],'E':['E','A','K','N'],'I':['I','J','N'],'J':['J','I','A','R'],'K':['K','A','E','R']};
+    var incoherent=secs.filter(function(s){
+      var sc=(s.code||'').charAt(0).toUpperCase();
+      var allowed=relMap[ch]||[ch,'R'];
+      return allowed.indexOf(sc)<0;
+    });
+    items.push({ok:incoherent.length===0,msg:incoherent.length===0?'Diagnosis sekunder koheren dengan primer':incoherent.length+' diagnosis sekunder tidak koheren dengan primer'});
+    if(incoherent.length>0){score-=15;warnings.push('Diagnosis sekunder tidak mendukung primer (chapter ICD-10 tidak sesuai)');}
+  }
+  score=Math.max(0,Math.min(100,score));
+  return {score:score,status:score>=70?'ok':score>=50?'warn':'error',items:items,warnings:warnings};
+}
+
+// ================================================================
+//  RULES ENGINE - 6 RULES
+// ================================================================
+function runValidation() {
+  var errors=[];var warnings=[];var score=100;
+  var primary=state.selectedPrimaryDiagnosis;
+  var secs=state.selectedSecondaryDiagnoses;
+  var analysis=state.currentAnalysis;
+  var sevLevel=state.documentChecklist.severity_level||1;
+  var reqDocs=DOC_REQ[sevLevel]||DOC_REQ[1];
+  var required=Object.entries(reqDocs).filter(function(x){return x[1].required;});
+  var missingDocs=required.filter(function(x){return !state.documentChecklist[x[0]];});
+  var coherence=checkCoherence();
+
+  // RULE 1: From master
+  if(!primary){
+    errors.push('Diagnosis primer wajib dipilih (minimal 1)');
+    score-=25;
+  } else if(!primary.fromMaster){
+    errors.push('Diagnosis harus dipilih dari database master, bukan diketik manual');
+    score-=15;
+  }
+
+  // RULE 2: SOAP coherence
+  if(primary&&coherence.score<50){
+    errors.push('Data klinis SOAP tidak mendukung diagnosis yang dipilih (score: '+coherence.score+'%)');
+    score-=20;
+  } else if(primary&&coherence.score<70){
+    warnings.push('Koherensi klinis sedang ('+coherence.score+'%) - periksa kesesuaian diagnosis dengan gejala');
+    score-=10;
+  }
+
+  // RULE 3: Secondary coherence
+  if(secs.length>0&&primary){
+    var relMap={'A':['A','B','E','R'],'E':['E','A','K','N'],'I':['I','J','N'],'J':['J','I','A','R'],'K':['K','A','E','R']};
+    var ch=(primary.code||'').charAt(0).toUpperCase();
+    var incoherent=secs.filter(function(s){
+      var sc=(s.code||'').charAt(0).toUpperCase();
+      var allowed=relMap[ch]||[ch,'R'];
+      return allowed.indexOf(sc)<0;
+    });
+    if(incoherent.length>0){warnings.push('Diagnosis sekunder tidak koheren dengan primer ('+incoherent.length+' diagnosis)');score-=10;}
+  }
+
+  // RULE 4: INACBG linkage
+  var hasLinkIssue=state.selectedTreatments.some(function(t){return t.selected&&!checkLinkage(primary&&primary.code,t.inacbg);});
+  if(hasLinkIssue&&primary){warnings.push('Ada tindakan dengan INA-CBG tidak sesuai diagnosis primer');score-=20;}
+
+  // RULE 5: Documents
+  missingDocs.forEach(function(x){errors.push('Dokumen wajib belum lengkap: '+reqDocs[x[0]].label);score-=10;});
+
+  // RULE 6: Minimum
+  if(!primary) errors.push('Minimal 1 diagnosis primer wajib dipilih');
+
+  // AI deviation
+  var aiList=(analysis&&analysis.diagnosis)||[];
+  var aiPrim=aiList.find(function(d){return d.is_primary;});
+  if(primary&&aiPrim&&primary.code!==aiPrim.code){warnings.push('Diagnosis dokter berbeda dari AI (AI: ['+aiPrim.code+'], Dokter: ['+primary.code+'])');score-=15;}
+
+  score=Math.max(0,Math.min(100,score));
+  state.validation={isValid:errors.length===0,errors:errors,warnings:warnings,riskScore:score,riskLevel:score>=85?'low':score>=60?'medium':'high'};
+}
+
+// ================================================================
+//  DASHBOARD
+// ================================================================
+async function renderDashboard() {
+  var c=document.getElementById('page-content');
+  c.innerHTML='<div class="space-y-6">'
+    +'<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5" id="stat-cards">'
+    +[0,1,2,3].map(function(){return '<div class="card p-5"><div class="h-6 w-1/2 bg-slate-100 rounded animate-pulse mb-3"></div><div class="h-8 bg-slate-100 rounded animate-pulse mb-2"></div><div class="h-4 bg-slate-50 rounded animate-pulse w-2/3"></div></div>';}).join('')
+    +'</div>'
+    +'<div class="card p-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-bolt text-amber-500"></i> Aksi Cepat</h3><div class="flex flex-wrap gap-3">'
+    +'<button onclick="navigateTo(\'new-analysis\')" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Buat Analisis Baru</button>'
+    +'<button onclick="navigateTo(\'transactions\')" class="btn btn-outline"><i class="fa-solid fa-clock-rotate-left"></i> Review Klaim Tertunda</button>'
+    +'<button onclick="navigateTo(\'encounters\')" class="btn btn-outline"><i class="fa-solid fa-list"></i> Lihat Encounters</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="p-5 border-b flex items-center justify-between"><h3 class="font-bold text-slate-700"><i class="fa-solid fa-receipt text-blue-600 mr-2"></i>Transaksi Terbaru</h3><button onclick="navigateTo(\'transactions\')" class="text-blue-600 text-xs font-semibold hover:underline">Lihat Semua</button></div><div id="recent-tx" class="p-2"><div class="text-center py-8 text-slate-400"><div class="loader loader-dark mx-auto mb-2" style="width:24px;height:24px;border-width:2px;"></div><p class="text-sm">Memuat...</p></div></div></div>'
+    +'</div>';
+  try {
+    var r1=await apiFetch('/transactions?limit=5').catch(function(){return {ok:false,data:{data:[]}};});
+    var r2=await apiFetch('/v1/service/encounters?limit=100').catch(function(){return {ok:false,data:{data:[]}};});
+    var txL=(r1.data&&r1.data.data)||[];
+    var encL=(r2.data&&r2.data.data)||[];
+    var totalEnc=(r2.data&&r2.data.pagination&&r2.data.pagination.totalItems)||encL.length;
+    var approved=txL.filter(function(t){return (t.status||'').toLowerCase().includes('setuju')||(t.status||'')==='approved';}).length;
+    var pending=txL.filter(function(t){return (t.status||'').toLowerCase().includes('pend');}).length;
+    var rate=txL.length>0?Math.round(approved/txL.length*100):94;
+    var riskC=txL.filter(function(t){return Number(t.profit_amount||0)<0;}).length;
+    document.getElementById('stat-cards').innerHTML=
+      mkStatCard('stat-blue','fa-stethoscope','Encounters',totalEnc,'Total Kunjungan','blue')
+      +mkStatCard('stat-green','fa-circle-check','Approval Rate',rate+'%','Tingkat Persetujuan Klaim','green')
+      +mkStatCard('stat-amber','fa-hourglass-half','Pending',pending||txL.length,'Klaim Menunggu Review','amber')
+      +mkStatCard('stat-red','fa-triangle-exclamation','Risk Alert',riskC,'Transaksi Berisiko Tinggi','red');
+    if(riskC>0){document.getElementById('risk-alert-badge').classList.remove('hidden');document.getElementById('risk-alert-count').textContent=riskC;}
+    renderTxList(txL.slice(0,5),'recent-tx',true);
+  } catch(err) {
+    document.getElementById('stat-cards').innerHTML='<div class="col-span-4 alert alert-warning"><i class="fa-solid fa-wifi-slash"></i> Gagal: '+err.message+'</div>';
+  }
+}
+function mkStatCard(grad,icon,label,val,sub,color) {
+  return '<div class="card '+grad+' text-white p-5 animate-fadeInUp"><div class="flex items-center justify-between mb-3"><div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><i class="fa-solid '+icon+' text-white"></i></div><span class="badge" style="background:rgba(255,255,255,0.2);color:white;font-size:10px;">'+label+'</span></div><div class="text-3xl font-bold">'+val+'</div><div class="text-'+color+'-100 text-sm mt-1">'+sub+'</div></div>';
+}
+function stBadge(s) {
+  var sl=(s||'').toLowerCase();
+  if(sl.includes('setuju')||sl==='approved') return '<span class="badge badge-success">'+(s||'Disetujui')+'</span>';
+  if(sl.includes('tolak')||sl==='rejected') return '<span class="badge badge-danger">'+(s||'Ditolak')+'</span>';
+  if(sl.includes('pend')) return '<span class="badge badge-warning">'+(s||'Pending')+'</span>';
+  return '<span class="badge badge-gray">'+(s||'Draft')+'</span>';
+}
+function renderTxList(list, cid, mini) {
+  var c=document.getElementById(cid);if(!c)return;
+  if(!list||list.length===0){c.innerHTML='<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-inbox text-3xl mb-2 block"></i><p class="text-sm">Belum ada data</p></div>';return;}
+  var rows=list.map(function(tx){
+    var pf=Number(tx.profit_amount||0);
+    var pc=pf>=0?'text-green-600':'text-red-600';
+    var pi=pf>=0?'fa-arrow-trend-up':'fa-arrow-trend-down';
+    return '<tr class="border-b border-slate-50 hover:bg-slate-50">'
+      +'<td class="px-4 py-3"><div class="font-medium text-slate-800">'+(tx.patient_name||'-')+'</div><div class="text-xs text-slate-400">#'+(tx.id||'-')+'</div></td>'
+      +(!mini?'<td class="px-4 py-3 text-slate-500 text-xs">'+fmtDate(tx.created_at)+'</td>':'')
+      +'<td class="px-4 py-3">'+stBadge(tx.status)+'</td>'
+      +'<td class="px-4 py-3 text-right font-medium">'+fmtRp(tx.coverage_amount)+'</td>'
+      +'<td class="px-4 py-3 text-right font-semibold '+pc+'"><i class="fa-solid '+pi+' mr-1 text-xs"></i>'+fmtRp(Math.abs(pf))+'</td>'
+      +(!mini?'<td class="px-4 py-3 text-center"><button onclick="alert(\'Detail transaksi #'+tx.id+'\')" class="btn btn-ghost py-1 px-3 text-xs"><i class="fa-solid fa-eye mr-1"></i>Detail</button></td>':'')
+      +'</tr>';
+  }).join('');
+  c.innerHTML='<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-slate-100 bg-slate-50">'
+    +'<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Pasien</th>'
+    +(!mini?'<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Tanggal</th>':'')
+    +'<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>'
+    +'<th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Coverage</th>'
+    +'<th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Profit/Loss</th>'
+    +(!mini?'<th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Aksi</th>':'')
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// ================================================================
+//  NEW ANALYSIS
+// ================================================================
+function renderNewAnalysis() {
+  var c=document.getElementById('page-content');
+  c.innerHTML='<div class="max-w-4xl mx-auto space-y-5">'
+    +'<div class="card p-5 flex items-center gap-4"><div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-robot text-blue-600 text-xl"></i></div><div><h2 class="font-bold text-slate-800 text-lg">Analisis AI Baru</h2><p class="text-slate-500 text-sm">Isi data SOAP dan Tanda Vital pasien untuk rekomendasi diagnosis AI</p></div></div>'
+    +'<form id="analysis-form" onsubmit="submitAnalysis(event)" novalidate>'
+    // Patient
+    +'<div class="card p-5 mb-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-user text-blue-600"></i> Data Pasien</h3>'
+    +'<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">'
+    +mkField('f-patient_name','text','Nama Pasien','Nama lengkap pasien',true)
+    +mkField('f-patient_id','text','Nomor BPJS / ID Pasien','Nomor BPJS atau RM',true)
+    +mkField('f-age','number','Usia (tahun)','Contoh: 45',true)
+    +'<div><label class="form-label required">Jenis Kelamin</label><select id="f-gender" class="form-input" required><option value="">-- Pilih --</option><option value="M">Laki-laki</option><option value="F">Perempuan</option></select></div>'
+    +'<div><label class="form-label required">Jenis Layanan</label><select id="f-service_type" class="form-input" required><option value="">-- Pilih --</option><option value="rawat_inap">Rawat Inap</option><option value="rawat_jalan">Rawat Jalan</option><option value="igd">IGD / Emergency</option></select></div>'
+    +mkField('f-encounter_number','text','Nomor Encounter (opsional)','Otomatis jika kosong',false)
+    +'</div></div>'
+    // Vital Signs
+    +'<div class="card p-5 mb-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-heart-pulse text-red-500"></i> Tanda Vital <span class="badge badge-danger text-xs">Wajib Diisi</span></h3>'
+    +'<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">'
+    +mkFieldUnit('f-blood_pressure','text','Tekanan Darah','120/80','mmHg',true)
+    +mkFieldUnit('f-heart_rate','number','Nadi','80','bpm',true)
+    +mkFieldUnit('f-respiratory_rate','number','Frekuensi Napas (RR)','20','x/mnt',true)
+    +mkFieldUnit('f-temperature','number','Suhu Tubuh','37.0','Â°C',true)
+    +mkFieldUnit('f-spo2','number','SpO2','98','%',true)
+    +mkFieldUnit('f-weight','number','Berat Badan','65','kg',true)
+    +mkFieldUnit('f-height','number','Tinggi Badan','170','cm',true)
+    +'</div><div id="vital-warning" class="hidden mt-3 alert alert-warning text-xs"><i class="fa-solid fa-triangle-exclamation flex-shrink-0"></i><span id="vital-warning-txt"></span></div></div>'
+    // SOAP
+    +'<div class="card p-5 mb-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-notes-medical text-indigo-600"></i> Data SOAP <span class="badge badge-danger text-xs">Wajib Diisi</span></h3><div class="space-y-4">'
+    +'<div><label class="form-label required">Subjective - Keluhan Pasien</label><textarea id="f-subjective" class="form-input" rows="3" placeholder="Keluhan utama, onset, durasi, karakteristik..." required></textarea></div>'
+    +'<div><label class="form-label required">Objective - Pemeriksaan Fisik & Lab</label><textarea id="f-objective" class="form-input" rows="3" placeholder="Hasil pemeriksaan fisik, temuan klinis, hasil lab..." required></textarea></div>'
+    +'<div><label class="form-label required">Assessment - Penilaian Dokter</label><textarea id="f-assessment" class="form-input" rows="3" placeholder="Diagnosis sementara, diferensial diagnosis..." required></textarea></div>'
+    +'<div><label class="form-label">Plan (Opsional)</label><textarea id="f-plan" class="form-input" rows="2" placeholder="Rencana terapi, tindakan..."></textarea></div>'
+    +'</div></div>'
+    +'<div id="analysis-errors" class="hidden mb-4 alert alert-danger"><i class="fa-solid fa-circle-exclamation flex-shrink-0 mt-0.5"></i><div><div class="font-semibold mb-1">Mohon lengkapi:</div><ul id="analysis-error-list" class="list-disc pl-4 space-y-0.5 text-xs"></ul></div></div>'
+    +'<div class="flex gap-3 justify-end"><button type="button" onclick="navigateTo(\'dashboard\')" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Kembali</button><button type="submit" id="analysis-submit-btn" class="btn btn-primary"><i class="fa-solid fa-brain"></i> Analisis dengan AI</button></div>'
+    +'</form></div>';
+
+  ['f-heart_rate','f-respiratory_rate','f-temperature','f-spo2'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.addEventListener('blur',checkVitals);
+  });
+}
+function mkField(id,type,label,ph,req){
+  return '<div><label class="form-label'+(req?' required':'')+'">'+label+'</label><input id="'+id+'" type="'+type+'" class="form-input" placeholder="'+ph+'"'+(req?' required':'')+' /></div>';
+}
+function mkFieldUnit(id,type,label,ph,unit,req){
+  return '<div><label class="form-label'+(req?' required':'')+'">'+label+'</label><input id="'+id+'" type="'+type+'" class="form-input" placeholder="'+ph+'"'+(req?' required':'')+' /><span class="text-xs text-slate-400">'+unit+'</span></div>';
+}
+function checkVitals(){
+  var warns=[];
+  var hr=parseFloat(document.getElementById('f-heart_rate')&&document.getElementById('f-heart_rate').value||0);
+  var rr=parseFloat(document.getElementById('f-respiratory_rate')&&document.getElementById('f-respiratory_rate').value||0);
+  var temp=parseFloat(document.getElementById('f-temperature')&&document.getElementById('f-temperature').value||0);
+  var spo2=parseFloat(document.getElementById('f-spo2')&&document.getElementById('f-spo2').value||0);
+  if(hr&&(hr<60||hr>100)) warns.push('Nadi '+hr+' bpm '+(hr<60?'(bradikardi)':'(takikardi)'));
+  if(rr&&(rr<12||rr>20)) warns.push('RR '+rr+' '+(rr<12?'(bradipneu)':'(takipneu)'));
+  if(temp&&(temp<36.1||temp>37.5)) warns.push('Suhu '+temp+' '+(temp<36.1?'(hipotermia)':'(hipertermia)'));
+  if(spo2&&spo2<95) warns.push('SpO2 '+spo2+'% (hipoksia < 95%)');
+  var div=document.getElementById('vital-warning');
+  if(warns.length>0){div.classList.remove('hidden');document.getElementById('vital-warning-txt').textContent='Abnormal: '+warns.join(' | ');}
+  else div.classList.add('hidden');
+}
+
+async function submitAnalysis(e){
+  e.preventDefault();
+  var errs=[];
+  var req=[
+    {id:'f-patient_name',l:'Nama Pasien'},{id:'f-patient_id',l:'Nomor BPJS'},
+    {id:'f-age',l:'Usia'},{id:'f-gender',l:'Jenis Kelamin'},{id:'f-service_type',l:'Jenis Layanan'},
+    {id:'f-blood_pressure',l:'Tekanan Darah'},{id:'f-heart_rate',l:'Nadi'},
+    {id:'f-respiratory_rate',l:'Frekuensi Napas'},{id:'f-temperature',l:'Suhu Tubuh'},
+    {id:'f-spo2',l:'SpO2'},{id:'f-weight',l:'Berat Badan'},{id:'f-height',l:'Tinggi Badan'},
+    {id:'f-subjective',l:'Subjective SOAP'},{id:'f-objective',l:'Objective SOAP'},{id:'f-assessment',l:'Assessment SOAP'}
+  ];
+  req.forEach(function(f){
+    var el=document.getElementById(f.id);
+    if(!el||!el.value.trim()){errs.push(f.l);if(el)el.classList.add('error');}
+    else if(el) el.classList.remove('error');
+  });
+  if(errs.length>0){
+    document.getElementById('analysis-errors').classList.remove('hidden');
+    document.getElementById('analysis-error-list').innerHTML=errs.map(function(e){return '<li>'+e+'</li>';}).join('');
+    return;
+  }
+  document.getElementById('analysis-errors').classList.add('hidden');
+  var btn=document.getElementById('analysis-submit-btn');
+  btn.innerHTML='<span class="loader"></span> Menganalisis...';btn.disabled=true;
+  var g=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
+  var payload={
+    patient_name:g('f-patient_name'),patient_id:g('f-patient_id'),
+    age:parseInt(g('f-age')),gender:g('f-gender'),service_type:g('f-service_type'),
+    encounter_number:g('f-encounter_number')||('ENC-'+Date.now()),
+    subjective:g('f-subjective'),objective:g('f-objective'),assessment:g('f-assessment'),plan:g('f-plan'),
+    vital_signs:{blood_pressure:g('f-blood_pressure'),heart_rate:parseFloat(g('f-heart_rate')),
+      respiratory_rate:parseFloat(g('f-respiratory_rate')),temperature:parseFloat(g('f-temperature')),
+      spo2:parseFloat(g('f-spo2')),weight:parseFloat(g('f-weight')),height:parseFloat(g('f-height'))},
+  };
+  try {
+    var res=await apiFetch('/v1/recomendation',{method:'POST',body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error(res.data&&res.data.message||'Analisis gagal');
+    state.currentAnalysis=res.data&&res.data.data||payload;
+    state.aiRecommendations=state.currentAnalysis;
+    resetDiagState();
+    toast('Analisis AI selesai!','success',4000);
+    navigateTo('diagnosis-validation');
+  } catch(err){
+    toast('Server error: '+err.message+' - memuat data demo','warning',4000);
+    loadDemo(payload);
+  } finally {
+    btn.innerHTML='<i class="fa-solid fa-brain"></i> Analisis dengan AI';btn.disabled=false;
+  }
+}
+
+function loadDemo(pData) {
+  state.currentAnalysis={
+    id:'DEMO-'+Date.now(),patient_name:pData.patient_name,subjective:pData.subjective,
+    objective:pData.objective,assessment:pData.assessment,service_type:pData.service_type,
+    encounter_number:pData.encounter_number,vital_signs:pData.vital_signs,
+    diagnosis:[
+      {code:'A09',title:'Diarrhoea and Gastroenteritis of Presumed Infectious Origin',is_primary:true,confidence:85,reason:'Gejala diare, mual, muntah konsisten dengan gastroenteritis akut',inacbg:'P-7-10-I',cost:8500000},
+      {code:'E86',title:'Volume Depletion (Dehidrasi)',is_primary:false,confidence:90,reason:'Dehidrasi berdasarkan vital sign dan gejala klinis',inacbg:'N-4-10-I',cost:4200000},
+      {code:'R50.9',title:'Fever, Unspecified',is_primary:false,confidence:80,reason:'Suhu tubuh meningkat, demam tidak spesifik',inacbg:'P-7-10-I',cost:2500000},
+    ],
+    treatment:[
+      {code:'89.39',title:'Pemeriksaan Darah Lengkap',category:'Diagnostik',inacbg:'P-7-10-I',cost:350000,confidence:95,reason:'Monitoring status infeksi dan elektrolit'},
+      {code:'87.44',title:'Foto Rontgen Thorax PA',category:'Radiologi',inacbg:'D-5-10-I',cost:250000,confidence:88,reason:'Skrining komplikasi paru'},
+    ],
+    severity:[{level:2,justification:'Pasien dehidrasi sedang dengan gangguan elektrolit memerlukan perawatan rawat inap',checklist:['Resume Medis','Hasil Lab','Konsultasi Spesialis']}]
+  };
+  state.aiRecommendations=state.currentAnalysis;
+  resetDiagState();
+  navigateTo('diagnosis-validation');
+}
+
+function resetDiagState(){
+  state.selectedPrimaryDiagnosis=null;
+  state.selectedSecondaryDiagnoses=[];
+  state.selectedTreatments=[];
+  state.documentChecklist={has_medical_resume:false,has_lab_results:false,has_imaging:false,has_specialist_consultation:false,has_iv_therapy_proof:false,has_daily_care_notes:false,has_min_5day_inpatient:false,severity_level:null};
+  state.validation={isValid:false,errors:[],warnings:[],riskScore:100,riskLevel:'high'};
+}
+
+// ================================================================
+//  ENCOUNTERS
+// ================================================================
+async function renderEncounters() {
+  var c=document.getElementById('page-content');
+  c.innerHTML='<div class="space-y-5"><div class="flex items-center justify-between"><input id="enc-search" type="text" class="form-input w-64" placeholder="Cari pasien atau encounter..." oninput="filterEnc()" /><button onclick="navigateTo(\'new-analysis\')" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Analisis Baru</button></div><div class="card"><div class="p-5 border-b flex items-center gap-2"><i class="fa-solid fa-stethoscope text-blue-600"></i><h3 class="font-bold text-slate-700">Daftar Encounters</h3></div><div id="enc-table"><div class="text-center py-10 text-slate-400"><div class="loader loader-dark mx-auto mb-2" style="width:28px;height:28px;border-width:2px;"></div><div class="text-sm">Memuat...</div></div></div></div></div>';
+  try {
+    var res=await apiFetch('/v1/service/encounters?limit=50');
+    state.encounters=(res.data&&res.data.data)||[];
+    renderEncTable(state.encounters);
+  } catch(err){
+    document.getElementById('enc-table').innerHTML='<div class="p-6 alert alert-warning"><i class="fa-solid fa-wifi-slash"></i> Gagal: '+err.message+'</div>';
+  }
+}
+function filterEnc(){
+  var q=(document.getElementById('enc-search').value||'').toLowerCase();
+  renderEncTable(state.encounters.filter(function(e){return (e.patient_name||'').toLowerCase().includes(q)||(e.encounter_number||'').toLowerCase().includes(q);}));
+}
+function renderEncTable(list) {
+  var c=document.getElementById('enc-table');if(!c)return;
+  if(!list||list.length===0){c.innerHTML='<div class="text-center py-10 text-slate-400"><i class="fa-solid fa-inbox text-3xl mb-2 block"></i><p class="text-sm">Tidak ada data</p></div>';return;}
+  var rows=list.map(function(enc){
+    var diags=enc.diagnosis||[];
+    var prim=diags.find(function(d){return d.is_primary;})||diags[0];
+    return '<tr class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" onclick="loadEncForVal(\''+( enc.encounter_number||enc.id)+'\')">'
+      +'<td class="px-4 py-3"><span class="mono text-xs bg-slate-100 px-2 py-1 rounded">'+(enc.encounter_number||enc.id)+'</span></td>'
+      +'<td class="px-4 py-3 font-medium text-slate-800">'+(enc.patient_name||'-')+'</td>'
+      +'<td class="px-4 py-3"><span class="badge badge-info">'+(enc.service_type||'-')+'</span></td>'
+      +'<td class="px-4 py-3 text-slate-500 text-xs">'+fmtDate(enc.created_at)+'</td>'
+      +'<td class="px-4 py-3">'+(prim?'<span class="mono text-xs font-semibold text-blue-700">['+prim.code+']</span> <span class="text-xs text-slate-600">'+(prim.title||'').substring(0,30)+'</span>':'<span class="text-slate-300 text-xs">Belum ada</span>')+'</td>'
+      +'<td class="px-4 py-3 text-center"><button class="btn btn-primary py-1.5 px-3 text-xs" onclick="event.stopPropagation();loadEncForVal(\''+( enc.encounter_number||enc.id)+'\')"><i class="fa-solid fa-arrow-right mr-1"></i>Validasi</button></td>'
+      +'</tr>';
+  }).join('');
+  c.innerHTML='<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-slate-100 bg-slate-50"><th class="text-left px-4 py-3 text-xs font-semibold text-slate-500">Encounter</th><th class="text-left px-4 py-3 text-xs font-semibold text-slate-500">Pasien</th><th class="text-left px-4 py-3 text-xs font-semibold text-slate-500">Layanan</th><th class="text-left px-4 py-3 text-xs font-semibold text-slate-500">Tanggal</th><th class="text-left px-4 py-3 text-xs font-semibold text-slate-500">AI Diagnosis</th><th class="text-center px-4 py-3 text-xs font-semibold text-slate-500">Aksi</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+async function loadEncForVal(encId){
+  toast('Memuat encounter...','info',2000);
+  try {
+    var res=await apiFetch('/v1/service/encounters/'+encId);
+    var raw=res.data&&res.data.data;
+    if(raw){
+      var d=Array.isArray(raw)?raw[0]:raw;
+      state.currentAnalysis=d;state.aiRecommendations=d;
+      resetDiagState();
+      navigateTo('diagnosis-validation');
+    } else throw new Error('Data tidak ditemukan');
+  } catch(err){toast('Gagal memuat: '+err.message,'error');}
+}
+
+// ================================================================
+//  TRANSACTIONS
+// ================================================================
+async function renderTransactions(){
+  var c=document.getElementById('page-content');
+  c.innerHTML='<div class="space-y-5"><div class="flex flex-wrap gap-3 items-center justify-between"><div class="flex gap-2"><input id="tx-search" type="text" class="form-input w-48" placeholder="Cari pasien..." oninput="filterTx()" /><select id="tx-filter" class="form-input w-36" onchange="filterTx()"><option value="">Semua</option><option value="setuju">Disetujui</option><option value="pend">Pending</option><option value="tolak">Ditolak</option></select></div><div class="flex gap-2" id="tx-summary"></div></div><div class="card"><div class="p-5 border-b flex items-center gap-2"><i class="fa-solid fa-receipt text-blue-600"></i><h3 class="font-bold text-slate-700">Riwayat Transaksi BPJS</h3></div><div id="tx-table"><div class="text-center py-10 text-slate-400"><div class="loader loader-dark mx-auto mb-2" style="width:28px;height:28px;border-width:2px;"></div><p class="text-sm">Memuat...</p></div></div></div></div>';
+  try {
+    var res=await apiFetch('/transactions?limit=50');
+    state.transactions=(res.data&&res.data.data)||[];
+    updateTxSummary();
+    renderTxList(state.transactions,'tx-table',false);
+  } catch(err){document.getElementById('tx-table').innerHTML='<div class="p-5 alert alert-warning"><i class="fa-solid fa-wifi-slash"></i> '+err.message+'</div>';}
+}
+function updateTxSummary(){
+  var l=state.transactions;
+  var a=l.filter(function(t){return (t.status||'').toLowerCase().includes('setuju');}).length;
+  var p=l.filter(function(t){return (t.status||'').toLowerCase().includes('pend');}).length;
+  var r=l.filter(function(t){return (t.status||'').toLowerCase().includes('tolak');}).length;
+  var s=document.getElementById('tx-summary');
+  if(s) s.innerHTML='<span class="badge badge-success">Disetujui: '+a+'</span><span class="badge badge-warning">Pending: '+p+'</span><span class="badge badge-danger">Ditolak: '+r+'</span>';
+}
+function filterTx(){
+  var q=(document.getElementById('tx-search').value||'').toLowerCase();
+  var st=(document.getElementById('tx-filter').value||'').toLowerCase();
+  renderTxList(state.transactions.filter(function(t){
+    return (t.patient_name||'').toLowerCase().includes(q)&&(!st||(t.status||'').toLowerCase().includes(st));
+  }),'tx-table',false);
+}
+
+// ================================================================
+//  DIAGNOSIS VALIDATION
+// ================================================================
+function renderDiagnosisValidation() {
+  var c=document.getElementById('page-content');
+  if(!state.currentAnalysis){
+    c.innerHTML='<div class="max-w-xl mx-auto text-center py-16"><div class="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6"><i class="fa-solid fa-microscope text-blue-500 text-3xl"></i></div><h2 class="text-xl font-bold text-slate-700 mb-2">Belum Ada Data Analisis</h2><p class="text-slate-500 mb-6">Buat analisis baru atau pilih encounter yang ada untuk validasi.</p><div class="flex gap-3 justify-center"><button onclick="navigateTo(\'new-analysis\')" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Buat Analisis Baru</button><button onclick="navigateTo(\'encounters\')" class="btn btn-outline"><i class="fa-solid fa-list"></i> Pilih Encounter</button></div></div>';
+    return;
+  }
+  var analysis=state.currentAnalysis;
+  var diagList=analysis.diagnosis||[];
+  var severity=(analysis.severity&&analysis.severity[0])||{level:1,justification:''};
+  var sevLevel=severity.level||1;
+  // Init selections
+  if(!state.selectedPrimaryDiagnosis&&diagList.length>0){
+    var prim=diagList.find(function(d){return d.is_primary;})||diagList[0];
+    state.selectedPrimaryDiagnosis=Object.assign({},prim,{fromMaster:true});
+  }
+  if(state.selectedSecondaryDiagnoses.length===0){
+    state.selectedSecondaryDiagnoses=diagList.filter(function(d){return !d.is_primary;}).map(function(d){return Object.assign({},d,{fromMaster:true});});
+  }
+  if(state.selectedTreatments.length===0){
+    state.selectedTreatments=(analysis.treatment||[]).map(function(t){return Object.assign({},t,{selected:true});});
+  }
+  if(!state.documentChecklist.severity_level) state.documentChecklist.severity_level=sevLevel;
+
+  var sevBadge='badge-'+(sevLevel===1?'success':sevLevel===2?'warning':'danger');
+  c.innerHTML='<div class="space-y-5">'
+    // Patient banner
+    +'<div class="card p-4 flex flex-wrap items-center gap-4 border-l-4 border-blue-500">'
+    +'<div class="flex items-center gap-3 flex-1"><div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user-injured text-blue-600"></i></div>'
+    +'<div><div class="font-bold text-slate-800">'+(analysis.patient_name||'Pasien')+'</div><div class="text-xs text-slate-500">'+(analysis.encounter_number||analysis.id||'')+' &bull; '+(analysis.service_type||'')+'</div></div></div>'
+    +'<div class="flex flex-wrap gap-2"><span class="badge badge-info"><i class="fa-solid fa-robot mr-1"></i>AI Analysis</span><span class="badge '+sevBadge+'"><i class="fa-solid fa-layer-group mr-1"></i>Severity Level '+sevLevel+'</span></div></div>'
+    // SOAP toggle
+    +'<div class="card p-4"><button class="w-full text-left font-semibold text-slate-700 flex items-center justify-between" onclick="toggleSOAP()"><span><i class="fa-solid fa-notes-medical text-indigo-600 mr-2"></i>Data SOAP</span><i id="soap-ico" class="fa-solid fa-chevron-down text-slate-400 text-sm"></i></button>'
+    +'<div id="soap-body" class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 hidden">'
+    +'<div class="bg-blue-50 rounded-xl p-3"><div class="text-xs font-semibold text-blue-700 mb-1 uppercase">Subjective</div><p class="text-sm text-slate-700">'+(analysis.subjective||'-')+'</p></div>'
+    +'<div class="bg-green-50 rounded-xl p-3"><div class="text-xs font-semibold text-green-700 mb-1 uppercase">Objective</div><p class="text-sm text-slate-700">'+(analysis.objective||'-')+'</p></div>'
+    +'<div class="bg-purple-50 rounded-xl p-3"><div class="text-xs font-semibold text-purple-700 mb-1 uppercase">Assessment</div><p class="text-sm text-slate-700">'+(analysis.assessment||'-')+'</p></div>'
+    +'</div></div>'
+    // Tabs
+    +'<div class="flex gap-2 flex-wrap bg-white rounded-2xl p-2 shadow-sm border border-slate-100" id="tabs-bar">'
+    +'<button class="tab-btn active" id="tb-diag" onclick="switchTab(\'diag\')"><i class="fa-solid fa-microscope mr-1.5"></i>1. Diagnosis</button>'
+    +'<button class="tab-btn" id="tb-treat" onclick="switchTab(\'treat\')"><i class="fa-solid fa-syringe mr-1.5"></i>2. Tindakan</button>'
+    +'<button class="tab-btn" id="tb-docs" onclick="switchTab(\'docs\')"><i class="fa-solid fa-folder-open mr-1.5"></i>3. Dokumen</button>'
+    +'<button class="tab-btn" id="tb-risk" onclick="switchTab(\'risk\')"><i class="fa-solid fa-chart-line mr-1.5"></i>4. Risk</button>'
+    +'<button class="tab-btn" id="tb-finance" onclick="switchTab(\'finance\')"><i class="fa-solid fa-coins mr-1.5"></i>5. Keuangan</button>'
+    +'<button class="tab-btn" id="tb-submit" onclick="switchTab(\'submit\')"><i class="fa-solid fa-lock mr-1.5"></i>6. Submit</button>'
+    +'</div>'
+    +'<div id="tab-content" class="animate-fadeInUp"></div></div>';
+
+  switchTab('diag');
+}
+function toggleSOAP(){
+  document.getElementById('soap-body').classList.toggle('hidden');
+  var ico=document.getElementById('soap-ico');
+  ico.classList.toggle('fa-chevron-down');ico.classList.toggle('fa-chevron-up');
+}
+function switchTab(tab){
+  ['diag','treat','docs','risk','finance','submit'].forEach(function(t){
+    var b=document.getElementById('tb-'+t);if(b)b.classList.toggle('active',t===tab);
+  });
+  var tc=document.getElementById('tab-content');if(!tc)return;
+  var fns={diag:tabDiag,treat:tabTreat,docs:tabDocs,risk:tabRisk,finance:tabFinance,submit:tabSubmit};
+  if(fns[tab]){tc.innerHTML='';fns[tab](tc);}
+}
+
+// ================================================================
+//  TAB 1: DIAGNOSIS
+// ================================================================
+function tabDiag(container){
+  var analysis=state.currentAnalysis;
+  var diagList=analysis&&analysis.diagnosis||[];
+  var primary=state.selectedPrimaryDiagnosis;
+  var secs=state.selectedSecondaryDiagnoses;
+  var coh=checkCoherence();
+  container.innerHTML='<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">'
+    // Left: AI
+    +'<div class="space-y-4"><div class="card card-ai p-5">'
+    +'<h3 class="font-bold text-slate-700 mb-1 flex items-center gap-2"><i class="fa-solid fa-robot text-blue-600"></i> Rekomendasi AI <span class="badge badge-info text-xs">Referensi</span></h3>'
+    +'<p class="text-xs text-slate-500 mb-4">Berdasarkan data SOAP pasien - bukan keputusan final dokter</p>'
+    +'<div class="mb-2 text-xs font-bold text-slate-500 uppercase">Diagnosis Primer</div>'
+    +diagList.filter(function(d){return d.is_primary;}).map(function(d){return aiDiagCard(d,true);}).join('')
+    +(diagList.filter(function(d){return d.is_primary;}).length===0?'<p class="text-sm text-slate-400">Tidak ada</p>':'')
+    +'<div class="mb-2 mt-4 text-xs font-bold text-slate-500 uppercase">Diagnosis Sekunder</div>'
+    +diagList.filter(function(d){return !d.is_primary;}).map(function(d){return aiDiagCard(d,false);}).join('')
+    +(diagList.filter(function(d){return !d.is_primary;}).length===0?'<p class="text-sm text-slate-400">Tidak ada rekomendasi sekunder</p>':'')
+    +'</div>'
+    // Coherence
+    +'<div class="card p-5 '+(coh.status==='ok'?'card-doctor':'card-warn')+'">'
+    +'<h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-vials '+(coh.status==='ok'?'text-green-600':'text-red-600')+'"></i> Clinical Coherence Check <span class="badge '+(coh.score>=70?'badge-success':coh.score>=50?'badge-warning':'badge-danger')+' text-xs">'+coh.score+'%</span></h3>'
+    +coh.items.map(function(item){return '<div class="flex items-start gap-2 mb-2 text-sm"><i class="fa-solid '+(item.ok?'fa-check-circle text-green-500':'fa-times-circle text-red-500')+' mt-0.5 flex-shrink-0"></i><span class="'+(item.ok?'text-slate-700':'text-red-700')+'">'+item.msg+'</span></div>';}).join('')
+    +coh.warnings.map(function(w){return '<div class="mt-2 alert alert-warning text-xs"><i class="fa-solid fa-triangle-exclamation flex-shrink-0"></i><span>'+w+'</span></div>';}).join('')
+    +'</div></div>'
+    // Right: Doctor Selection
+    +'<div class="space-y-4"><div class="card card-doctor p-5">'
+    +'<h3 class="font-bold text-slate-700 mb-1 flex items-center gap-2"><i class="fa-solid fa-user-doctor text-green-600"></i> Pilihan Dokter <span class="badge badge-success text-xs">Keputusan Final</span></h3>'
+    +'<p class="text-xs text-slate-500 mb-4">Pilih dari rekomendasi AI atau cari dari database master</p>'
+    +'<div class="mb-3"><div class="text-xs font-bold text-slate-500 uppercase mb-2">Diagnosis Primer *</div>'
+    +'<div id="sel-primary" class="mb-2">'+(primary?selDiagCard(primary,true,null):'<div class="diag-card border-dashed text-slate-400 text-sm text-center py-4">Belum dipilih - klik AI recommendation atau cari manual</div>')+'</div>'
+    +'<button onclick="openDiagModal(\'primary\')" class="btn btn-outline w-full text-xs py-2"><i class="fa-solid fa-search"></i> Cari dari Master Diagnosis</button></div>'
+    +'<div><div class="text-xs font-bold text-slate-500 uppercase mb-2">Diagnosis Sekunder (maks. 2)</div>'
+    +'<div id="sel-secs" class="mb-2 space-y-2">'
+    +(secs.length>0?secs.map(function(d,i){return selDiagCard(d,false,i);}).join(''):'<div class="diag-card border-dashed text-slate-400 text-sm text-center py-4">Belum ada diagnosis sekunder</div>')
+    +'</div>'
+    +(secs.length<2?'<button onclick="openDiagModal(\'secondary\')" class="btn btn-outline w-full text-xs py-2"><i class="fa-solid fa-plus"></i> Tambah Diagnosis Sekunder</button>':'')
+    +'</div></div>'
+    // Status
+    +'<div class="card p-5"><h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-clipboard-check text-indigo-600"></i> Status Diagnosis</h3>'
+    +[
+      {ok:!!primary,l:'Diagnosis primer dipilih',d:primary?'['+primary.code+'] '+((primary.title||'').substring(0,30)):'Belum dipilih'},
+      {ok:!!(primary&&primary.fromMaster),l:'Dari master database',d:primary&&primary.fromMaster?'Valid dari database':'Wajib dari database'},
+      {ok:secs.length>0,l:'Diagnosis sekunder',d:secs.length+'/2 dipilih (opsional)'},
+      {ok:coh.score>=50,l:'Koherensi klinis ('+coh.score+'%)',d:coh.status==='ok'?'SOAP mendukung diagnosis':coh.score>=50?'Sedang - perlu perhatian':'Rendah - perlu perbaikan'},
+    ].map(function(item){return '<div class="flex items-start justify-between gap-3 py-2 border-b border-slate-50 last:border-0"><div class="flex items-center gap-2 text-sm"><i class="fa-solid '+(item.ok?'fa-check-circle text-green-500':'fa-circle-xmark text-red-400')+' flex-shrink-0"></i><span class="font-medium text-slate-700">'+item.l+'</span></div><span class="text-xs text-slate-500 text-right">'+item.d+'</span></div>';}).join('')
+    +'<div class="mt-3"><button onclick="switchTab(\'treat\')" class="btn btn-primary w-full justify-center text-sm">Lanjut ke Tindakan <i class="fa-solid fa-arrow-right ml-1"></i></button></div>'
+    +'</div></div></div>';
+}
+
+function aiDiagCard(d, isPrimary){
+  var cc=d.confidence>=85?'text-green-600':d.confidence>=70?'text-amber-500':'text-red-500';
+  var cbg=d.confidence>=85?'bg-green-50':d.confidence>=70?'bg-amber-50':'bg-red-50';
+  return '<div class="diag-card hover:border-blue-400" onclick="selAIDiag(\''+d.code+'\',\''+(isPrimary?'primary':'secondary')+'\')">'
+    +'<div class="flex items-center justify-between mb-1"><span class="mono font-bold text-blue-700 text-sm">['+d.code+']</span>'
+    +'<div class="flex items-center gap-2"><span class="'+cc+' '+cbg+' px-2 py-0.5 rounded-full text-xs font-semibold">'+(d.confidence||0)+'%</span><span class="badge badge-info text-xs"><i class="fa-solid fa-robot mr-0.5"></i>AI</span></div></div>'
+    +'<div class="text-sm font-medium text-slate-800 mb-1">'+(d.title||d.str||'')+'</div>'
+    +(d.inacbg?'<div class="text-xs text-slate-500"><i class="fa-solid fa-link mr-1"></i>INA-CBG: <span class="mono font-semibold">'+d.inacbg+'</span></div>':'')
+    +(d.reason?'<div class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-comment-medical mr-1"></i>'+d.reason+'</div>':'')
+    +'<div class="mt-2 text-xs text-blue-600 font-semibold">Klik untuk pilih diagnosis ini</div></div>';
+}
+
+function selDiagCard(d, isPrimary, idx){
+  var rmBtn=isPrimary
+    ?'<button onclick="clearPrimary()" class="text-red-400 hover:text-red-600 text-xs p-1" title="Hapus"><i class="fa-solid fa-times"></i></button>'
+    :'<button onclick="removeSec('+idx+')" class="text-red-400 hover:text-red-600 text-xs p-1" title="Hapus"><i class="fa-solid fa-times"></i></button>';
+  return '<div class="diag-card '+(isPrimary?'selected-primary':'selected')+' mb-1">'
+    +'<div class="flex items-start justify-between">'
+    +'<div class="flex-1"><div class="flex items-center gap-2 mb-1">'
+    +'<span class="mono font-bold '+(isPrimary?'text-blue-700':'text-green-700')+' text-sm">['+d.code+']</span>'
+    +'<span class="badge '+(isPrimary?'badge-primary':'badge-success')+' text-xs">'+(isPrimary?'Primer':'Sekunder')+'</span>'
+    +(d.fromMaster?'<span class="badge badge-success text-xs"><i class="fa-solid fa-database mr-0.5"></i>Master</span>':'<span class="badge badge-warning text-xs">Manual</span>')
+    +'</div><div class="text-sm font-medium text-slate-800">'+(d.title||d.str||d.disease_name||'')+'</div>'
+    +(d.inacbg?'<div class="text-xs text-slate-500 mt-0.5"><i class="fa-solid fa-link mr-1"></i>INA-CBG: <span class="mono">'+d.inacbg+'</span></div>':'')
+    +(d.claim?'<div class="text-xs text-green-600 mt-0.5"><i class="fa-solid fa-coins mr-1"></i>Claim: '+fmtRp(d.claim)+'</div>':'')
+    +'</div>'+rmBtn+'</div></div>';
+}
+
+function selAIDiag(code, type){
+  var analysis=state.currentAnalysis;
+  var diagList=analysis&&analysis.diagnosis||[];
+  var d=diagList.find(function(x){return x.code===code;});
+  if(!d) return;
+  if(type==='primary'){
+    state.selectedPrimaryDiagnosis=Object.assign({},d,{fromMaster:true});
+    toast('Diagnosis primer: ['+d.code+'] '+d.title,'success');
+  } else {
+    if(state.selectedSecondaryDiagnoses.length>=2){toast('Maks. 2 diagnosis sekunder','warning');return;}
+    if(state.selectedSecondaryDiagnoses.find(function(x){return x.code===d.code;})){toast('Sudah dipilih','warning');return;}
+    state.selectedSecondaryDiagnoses.push(Object.assign({},d,{fromMaster:true}));
+    toast('Diagnosis sekunder ditambah: ['+d.code+']','success');
+  }
+  tabDiag(document.getElementById('tab-content'));
+  runValidation();
+}
+function clearPrimary(){state.selectedPrimaryDiagnosis=null;tabDiag(document.getElementById('tab-content'));runValidation();}
+function removeSec(idx){state.selectedSecondaryDiagnoses.splice(idx,1);tabDiag(document.getElementById('tab-content'));runValidation();}
+
+// Diag search modal
+function openDiagModal(type){
+  state.diagCb=function(diag){
+    var d=Object.assign({},diag,{fromMaster:true});
+    if(type==='primary'){
+      state.selectedPrimaryDiagnosis=d;
+      toast('Primer: ['+d.code+'] '+(d.title||d.str),'success');
+    } else {
+      if(state.selectedSecondaryDiagnoses.length>=2){toast('Maks. 2','warning');return;}
+      if(state.selectedSecondaryDiagnoses.find(function(x){return x.code===d.code;})){toast('Sudah dipilih','warning');return;}
+      state.selectedSecondaryDiagnoses.push(d);
+      toast('Sekunder: ['+d.code+']','success');
+    }
+    closeDiagModal();
+    tabDiag(document.getElementById('tab-content'));
+    runValidation();
+  };
+  var m=document.getElementById('diag-search-modal');
+  m.classList.remove('hidden');m.classList.add('flex');
+  document.getElementById('diag-search-input').value='';
+  document.getElementById('diag-search-results').innerHTML='<p class="text-center text-slate-400 text-sm py-8">Ketik minimal 2 karakter</p>';
+  document.getElementById('diag-search-input').focus();
+}
+function closeDiagModal(){
+  var m=document.getElementById('diag-search-modal');
+  m.classList.add('hidden');m.classList.remove('flex');
+}
+var diagTimer;
+async function searchDiag(q){
+  clearTimeout(diagTimer);
+  var res=document.getElementById('diag-search-results');
+  if(q.length<2){res.innerHTML='<p class="text-center text-slate-400 text-sm py-8">Ketik minimal 2 karakter</p>';return;}
+  res.innerHTML='<div class="text-center py-6 text-slate-400"><div class="loader loader-dark mx-auto mb-2" style="width:20px;height:20px;border-width:2px;"></div><div class="text-sm">Mencari...</div></div>';
+  diagTimer=setTimeout(async function(){
+    try {
+      var r1=await apiFetch('/v1/mrconso?str='+encodeURIComponent(q)+'&limit=20').catch(function(){return {ok:false,data:{data:[]}};});
+      var r2=await apiFetch('/diagnosis?diagnosis='+encodeURIComponent(q)).catch(function(){return {ok:false,data:{data:[]}};});
+      var results=[];
+      if(r1.ok) results=(r1.data&&r1.data.data)||[];
+      if(results.length===0&&r2.ok) results=(r2.data&&r2.data.data)||[];
+      if(results.length===0){res.innerHTML='<p class="text-center text-slate-400 text-sm py-8">Tidak ada hasil untuk "'+q+'"</p>';return;}
+      res.innerHTML=results.map(function(d){
+        var code=d.code||d.icd10_code||'';
+        var title=d.str||d.str_indo||d.disease_name||d.title||'';
+        var claim=d.claim;
+        var inacbg=d.inacbg||null;
+        var obj=JSON.stringify({code:code,title:title,str:title,inacbg:inacbg,chapter:d.chapter||'',claim:claim,fromMaster:true});
+        return '<div class="dropdown-item" onclick="selFromMaster('+obj.replace(/"/g,"'")+')">'
+          +'<div class="flex items-center justify-between">'
+          +'<div><span class="mono font-bold text-blue-700 text-sm">['+code+']</span><span class="text-sm text-slate-800 ml-2">'+title+'</span></div>'
+          +(claim?'<span class="text-xs text-green-600 font-semibold">'+fmtRp(claim)+'</span>':'')
+          +'</div>'
+          +(d.chapter?'<div class="text-xs text-slate-400 mt-0.5">Chapter: '+d.chapter+'</div>':'')
+          +'</div>';
+      }).join('');
+    } catch(err){res.innerHTML='<p class="text-center text-red-400 text-sm py-6"><i class="fa-solid fa-circle-exclamation mr-1"></i>'+err.message+'</p>';}
+  },400);
+}
+function selFromMaster(diag){if(state.diagCb) state.diagCb(diag);}
+
+// ================================================================
+//  TAB 2: TINDAKAN
+// ================================================================
+function tabTreat(container){
+  var analysis=state.currentAnalysis;
+  var treats=analysis&&analysis.treatment||[];
+  var primary=state.selectedPrimaryDiagnosis;
+  container.innerHTML='<div class="space-y-4"><div class="card p-5">'
+    +'<h3 class="font-bold text-slate-700 mb-1 flex items-center gap-2"><i class="fa-solid fa-syringe text-indigo-600"></i> Tindakan Medis - Rekomendasi AI</h3>'
+    +'<p class="text-xs text-slate-500 mb-4">Centang tindakan yang dilakukan. Periksa INA-CBG linkage untuk setiap tindakan.</p>'
+    +'<div class="space-y-3">'
+    +(treats.length===0?'<p class="text-slate-400 text-sm text-center py-6">Tidak ada rekomendasi tindakan</p>':treats.map(function(t,i){return treatCard(t,i,primary);}).join(''))
+    +'</div>'
+    +'<div class="mt-4"><button onclick="switchTab(\'docs\')" class="btn btn-primary text-sm">Lanjut ke Dokumen <i class="fa-solid fa-arrow-right ml-1"></i></button></div>'
+    +'</div></div>';
+}
+function treatCard(t, i, primary){
+  var isSel=!!(state.selectedTreatments.find(function(x){return x.code===t.code&&x.selected!==false;}));
+  var linkOk=checkLinkage(primary&&primary.code,t.inacbg);
+  var cc=(t.confidence||0)>=85?'text-green-600':(t.confidence||0)>=70?'text-amber-500':'text-red-500';
+  return '<div class="card '+((!linkOk&&primary)?'card-warn':'')+' p-4">'
+    +'<div class="flex items-start gap-3">'
+    +'<input type="checkbox" id="tr-'+i+'" class="w-4 h-4 mt-0.5 cursor-pointer accent-blue-600"'+(isSel?' checked':'')+' onchange="toggleTreat(\''+t.code+'\',this.checked)" />'
+    +'<div class="flex-1">'
+    +'<div class="flex items-center flex-wrap gap-2 mb-1"><span class="mono font-bold text-indigo-700 text-sm">['+t.code+']</span>'
+    +'<span class="font-semibold text-slate-800 text-sm">'+(t.title||'')+'</span>'
+    +(t.confidence?'<span class="'+cc+' text-xs font-semibold">'+t.confidence+'%</span>':'')
+    +'<span class="badge badge-info text-xs"><i class="fa-solid fa-robot mr-0.5"></i>AI</span></div>'
+    +'<div class="flex flex-wrap gap-4 text-xs text-slate-500 mb-1">'
+    +(t.category?'<span><i class="fa-solid fa-tag mr-1"></i>'+t.category+'</span>':'')
+    +(t.inacbg?'<span><i class="fa-solid fa-link mr-1"></i>INA-CBG: <span class="mono font-semibold">'+t.inacbg+'</span></span>':'')
+    +(t.cost?'<span class="text-green-600"><i class="fa-solid fa-coins mr-1"></i>'+fmtRp(t.cost)+'</span>':'')
+    +'</div>'
+    +(t.reason?'<div class="text-xs text-slate-500"><i class="fa-solid fa-comment-medical mr-1"></i>'+t.reason+'</div>':'')
+    +(!linkOk&&primary?'<div class="mt-2 alert alert-warning text-xs"><i class="fa-solid fa-triangle-exclamation flex-shrink-0"></i><span>INA-CBG <span class="mono font-semibold">'+t.inacbg+'</span> tidak berkorelasi dengan diagnosis primer ['+primary.code+']. Pastikan tindakan ini relevan.</span></div>':'')
+    +(!isSel?'<div class="mt-1 alert alert-info text-xs"><i class="fa-solid fa-info-circle flex-shrink-0"></i><span>AI merekomendasikan tindakan ini namun tidak dipilih</span></div>':'')
+    +'</div></div></div>';
+}
+function toggleTreat(code, sel){
+  var t=state.selectedTreatments.find(function(x){return x.code===code;});
+  if(t){t.selected=sel;}
+  else {
+    var raw=state.currentAnalysis&&state.currentAnalysis.treatment&&state.currentAnalysis.treatment.find(function(x){return x.code===code;});
+    if(raw) state.selectedTreatments.push(Object.assign({},raw,{selected:sel}));
+  }
+  runValidation();
+}
+
+// ================================================================
+//  TAB 3: DOCUMENTS
+// ================================================================
+function tabDocs(container){
+  var analysis=state.currentAnalysis;
+  var severity=(analysis&&analysis.severity&&analysis.severity[0])||{level:1};
+  var sevLevel=state.documentChecklist.severity_level||severity.level||1;
+  var reqDocs=DOC_REQ[sevLevel]||DOC_REQ[1];
+  var chk=state.documentChecklist;
+  var required=Object.entries(reqDocs).filter(function(x){return x[1].required;});
+  var completed=required.filter(function(x){return chk[x[0]];}).length;
+  var pct=required.length>0?Math.round(completed/required.length*100):100;
+  var canSub=completed===required.length;
+  container.innerHTML='<div class="space-y-4"><div class="card p-5">'
+    +'<div class="flex items-start justify-between mb-4"><div><h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-folder-open text-amber-500"></i> Persyaratan Dokumen Klaim BPJS</h3><p class="text-xs text-slate-500 mt-0.5">Dokumen wajib berbeda berdasarkan Severity Level</p></div>'
+    +'<div class="flex gap-1">'
+    +[1,2,3].map(function(l){return '<button class="tab-btn text-xs py-1 px-3 '+(sevLevel===l?'active':'')+'" onclick="setSev('+l+')">Lvl '+l+'</button>';}).join('')
+    +'</div></div>'
+    +'<div class="alert '+(sevLevel===1?'alert-success':sevLevel===2?'alert-warning':'alert-danger')+' mb-4 text-xs">'
+    +'<i class="fa-solid fa-layer-group flex-shrink-0"></i>'
+    +'<div><b>Severity Level '+sevLevel+' - '+['','Ringan','Sedang','Berat'][sevLevel]+'</b>'
+    +((analysis&&analysis.severity&&analysis.severity[0]&&analysis.severity[0].justification)?'<div class="mt-0.5 opacity-80">'+analysis.severity[0].justification+'</div>':'')
+    +'</div></div>'
+    +'<div class="mb-5"><div class="flex items-center justify-between text-xs mb-2"><span class="font-semibold text-slate-600">Progress Dokumen Wajib</span><span class="font-bold '+(canSub?'text-green-600':'text-red-600')+'">'+completed+'/'+required.length+' wajib ('+pct+'%)</span></div>'
+    +'<div class="progress-bar"><div id="doc-progress-fill" class="progress-fill '+(canSub?'bg-green-500':'bg-red-500')+'" style="width:'+pct+'%"></div></div></div>'
+    +'<div class="space-y-3">'
+    +Object.entries(reqDocs).map(function(entry){
+      var key=entry[0],di=entry[1];
+      var isChk=chk[key]||false;
+      var isReq=di.required;var isRec=di.recommended;
+      var statusIco=isReq?(isChk?'fa-check-circle text-green-500':'fa-circle-xmark text-red-500'):(isRec?(isChk?'fa-check-circle text-green-500':'fa-exclamation-circle text-amber-500'):(isChk?'fa-check-circle text-green-500':'fa-circle text-slate-300'));
+      var borderCls=isReq?(isChk?'border-green-300 bg-green-50':'border-red-200 bg-red-50'):(isRec?'border-amber-200 bg-amber-50':'border-slate-200 bg-white');
+      return '<div class="border rounded-xl p-4 '+borderCls+'">'
+        +'<label class="flex items-start gap-3 cursor-pointer">'
+        +'<input type="checkbox" id="doc-'+key+'" class="w-4 h-4 mt-0.5 cursor-pointer accent-green-600"'+(isChk?' checked':'')+' onchange="updateDoc(\''+key+'\',this.checked)" />'
+        +'<div class="flex-1">'
+        +'<div class="flex items-center gap-2"><i class="fa-solid '+statusIco+' text-sm"></i><span class="font-semibold text-slate-800 text-sm">'+di.label+'</span>'
+        +(isReq?'<span class="badge badge-danger text-xs">WAJIB</span>':isRec?'<span class="badge badge-warning text-xs">Disarankan</span>':'<span class="badge badge-gray text-xs">Opsional</span>')
+        +'</div><div class="text-xs text-slate-500 mt-0.5">'+di.note+'</div>'
+        +(isReq&&!isChk?'<div class="text-xs text-red-600 font-semibold mt-1">Belum dilengkapi - wajib untuk Level '+sevLevel+'</div>':'')
+        +'</div></label></div>';
+    }).join('')
+    +'</div>'
+    +'<div class="mt-5 p-4 rounded-xl '+(canSub?'bg-green-50 border border-green-200':'bg-red-50 border border-red-200')+'">'
+    +'<div class="flex items-center gap-2 font-semibold '+(canSub?'text-green-700':'text-red-700')+' text-sm">'
+    +'<i class="fa-solid '+(canSub?'fa-check-circle':'fa-times-circle')+'"></i>'
+    +(canSub?'Status: Dokumen wajib sudah lengkap ('+completed+'/'+required.length+')':'Status: TIDAK BISA submit - '+(required.length-completed)+' dokumen wajib belum lengkap')
+    +'</div></div>'
+    +'<div class="mt-4"><button onclick="switchTab(\'risk\')" class="btn btn-primary text-sm">Lanjut ke Risk Assessment <i class="fa-solid fa-arrow-right ml-1"></i></button></div>'
+    +'</div></div>';
+}
+function setSev(level){state.documentChecklist.severity_level=level;tabDocs(document.getElementById('tab-content'));runValidation();}
+function updateDoc(key,val){
+  state.documentChecklist[key]=val;
+  runValidation();
+  // update progress fill live
+  var sevLevel=state.documentChecklist.severity_level||1;
+  var reqDocs=DOC_REQ[sevLevel]||DOC_REQ[1];
+  var required=Object.entries(reqDocs).filter(function(x){return x[1].required;});
+  var completed=required.filter(function(x){return state.documentChecklist[x[0]];}).length;
+  var pct=required.length>0?Math.round(completed/required.length*100):100;
+  var canSub=completed===required.length;
+  var pf=document.getElementById('doc-progress-fill');
+  if(pf){pf.style.width=pct+'%';pf.className='progress-fill '+(canSub?'bg-green-500':'bg-red-500');}
+}
+
+// ================================================================
+//  TAB 4: RISK
+// ================================================================
+function tabRisk(container){
+  runValidation();
+  var v=state.validation;
+  var primary=state.selectedPrimaryDiagnosis;
+  var analysis=state.currentAnalysis;
+  var coh=checkCoherence();
+  var sevLevel=state.documentChecklist.severity_level||1;
+  var reqDocs=DOC_REQ[sevLevel]||DOC_REQ[1];
+  var required=Object.entries(reqDocs).filter(function(x){return x[1].required;});
+  var missingDocs=required.filter(function(x){return !state.documentChecklist[x[0]];});
+  var hasLinkIssue=state.selectedTreatments.some(function(t){return t.selected&&!checkLinkage(primary&&primary.code,t.inacbg);});
+  var sc=v.riskScore;
+  var scColor=sc>=85?'text-green-600':sc>=60?'text-amber-500':'text-red-600';
+  var scBg=sc>=85?'#059669':sc>=60?'#d97706':'#dc2626';
+  var lvlLabel=sc>=85?'PELUANG TINGGI':sc>=60?'PELUANG SEDANG':'PELUANG RENDAH';
+  var lvlEmoji=sc>=85?'HIJAU':sc>=60?'KUNING':'MERAH';
+  var circ=2*Math.PI*40;
+  var offset=circ-(sc/100)*circ;
+  container.innerHTML='<div class="space-y-5">'
+    // Main card
+    +'<div class="card p-6"><h3 class="font-bold text-slate-700 mb-5 flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-600"></i> Claim Risk Assessment</h3>'
+    +'<div class="flex flex-col lg:flex-row gap-8 items-center">'
+    +'<div class="risk-ring flex-shrink-0" style="position:relative;display:inline-flex;align-items:center;justify-content:center;">'
+    +'<svg width="120" height="120" viewBox="0 0 100 100" style="transform:rotate(-90deg);">'
+    +'<circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" stroke-width="10"/>'
+    +'<circle cx="50" cy="50" r="40" fill="none" stroke="'+scBg+'" stroke-width="10" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'" stroke-linecap="round" style="transition:stroke-dashoffset 0.8s ease;"/>'
+    +'</svg><div style="position:absolute;text-align:center;"><div class="text-3xl font-bold '+scColor+'">'+sc+'%</div><div class="text-xs text-slate-500 font-semibold">Risk Score</div></div>'
+    +'</div>'
+    +'<div class="flex-1 space-y-3">'
+    +'<div class="text-lg font-bold '+scColor+'">'+lvlLabel+'</div>'
+    +'<div class="text-sm text-slate-600">Peluang klaim disetujui BPJS berdasarkan validasi diagnosis, tindakan, dan dokumen.</div>'
+    +'<div class="flex flex-wrap gap-2">'
+    +(v.errors.length===0?'<span class="badge badge-success"><i class="fa-solid fa-check-circle mr-1"></i>Semua validasi kritis OK</span>':'<span class="badge badge-danger"><i class="fa-solid fa-times-circle mr-1"></i>'+v.errors.length+' masalah kritis</span>')
+    +(v.warnings.length>0?'<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation mr-1"></i>'+v.warnings.length+' peringatan</span>':'')
+    +'</div></div></div></div>'
+    // Penalty table
+    +'<div class="card p-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-list-check text-orange-600"></i> Faktor Risiko dan Penalti</h3>'
+    +'<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-slate-100"><th class="text-left py-2 px-3 text-xs font-semibold text-slate-500 uppercase">Faktor</th><th class="text-left py-2 px-3 text-xs font-semibold text-slate-500 uppercase">Status</th><th class="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase">Penalti</th></tr></thead><tbody>'
+    +[
+      {l:'Diagnosis primer ada',ok:!!primary,st:primary?'['+primary.code+'] dipilih':'Belum dipilih',pen:-25},
+      {l:'Dari master database',ok:!!(primary&&primary.fromMaster),st:primary&&primary.fromMaster?'Valid dari database':'Harus dari database',pen:-15},
+      {l:'Koherensi klinis SOAP',ok:coh.score>=70,st:'Score: '+coh.score+'%',pen:-20},
+      {l:'Linkage INA-CBG tindakan',ok:!hasLinkIssue,st:hasLinkIssue?'Ada tindakan tidak sesuai':'Semua linkage OK',pen:-20},
+      {l:'Dokumen wajib lengkap',ok:missingDocs.length===0,st:missingDocs.length===0?'Lengkap ('+required.length+'/'+required.length+')':missingDocs.length+' belum lengkap',pen:missingDocs.length*-10},
+    ].map(function(row){
+      return '<tr class="border-b border-slate-50"><td class="py-2 px-3"><div class="flex items-center gap-2"><i class="fa-solid '+(row.ok?'fa-check-circle text-green-500':'fa-times-circle text-red-500')+' text-sm"></i><span class="font-medium text-slate-700">'+row.l+'</span></div></td><td class="py-2 px-3 text-xs text-slate-500">'+row.st+'</td><td class="py-2 px-3 text-right font-bold '+(row.ok?'text-green-600':'text-red-600')+'">'+(row.ok?'0%':row.pen+'%')+'</td></tr>';
+    }).join('')
+    +'</tbody><tfoot><tr class="border-t-2 border-slate-200"><td class="py-2 px-3 font-bold text-slate-800" colspan="2">Total Risk Score</td><td class="py-2 px-3 text-right font-bold text-xl '+scColor+'">'+sc+'%</td></tr></tfoot></table></div></div>'
+    // Recommendations
+    +(v.errors.length>0||sc<85?'<div class="card p-5 card-amber"><h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-lightbulb text-amber-500"></i> Rekomendasi Peningkatan Score</h3><div class="space-y-2 text-sm">'
+      +(!primary?'<div class="alert alert-danger text-xs"><i class="fa-solid fa-circle-exclamation flex-shrink-0"></i><span>Pilih diagnosis primer dari master diagnosis</span></div>':'')
+      +missingDocs.map(function(x){return '<div class="alert alert-warning text-xs"><i class="fa-solid fa-triangle-exclamation flex-shrink-0"></i><span>Lengkapi: <b>'+reqDocs[x[0]].label+'</b> (+10% score)</span></div>';}).join('')
+      +(hasLinkIssue?'<div class="alert alert-warning text-xs"><i class="fa-solid fa-link flex-shrink-0"></i><span>Pastikan tindakan sesuai INA-CBG diagnosis (+20%)</span></div>':'')
+      +(coh.score<70?'<div class="alert alert-warning text-xs"><i class="fa-solid fa-vials flex-shrink-0"></i><span>Periksa koherensi klinis - diagnosis harus sesuai SOAP</span></div>':'')
+      +'</div></div>':'<div class="alert alert-success"><i class="fa-solid fa-trophy flex-shrink-0"></i><span class="font-semibold">Semua faktor optimal! Peluang klaim disetujui sangat tinggi.</span></div>')
+    +'<button onclick="switchTab(\'finance\')" class="btn btn-primary text-sm">Proyeksi Keuangan <i class="fa-solid fa-arrow-right ml-1"></i></button>'
+    +'</div>';
+}
+
+// ================================================================
+//  TAB 5: FINANCIAL PROJECTION
+// ================================================================
+function tabFinance(container){
+  var primary=state.selectedPrimaryDiagnosis;
+  var analysis=state.currentAnalysis;
+  var coverage=Number(primary&&(primary.claim||primary.cost)||0);
+  var treats=state.selectedTreatments.filter(function(t){return t.selected;});
+  var treatCost=treats.reduce(function(s,t){return s+Number(t.cost||0);},0);
+  var sevLevel=state.documentChecklist.severity_level||1;
+  var baseCost=[0,1500000,2500000,5000000][sevLevel];
+  var estCost=baseCost+treatCost;
+  var profit=coverage-estCost;
+  var profPct=coverage>0?((profit/coverage)*100).toFixed(1):0;
+  var isProfitable=profit>=0;
+  container.innerHTML='<div class="space-y-5">'
+    +'<div class="card p-6"><h3 class="font-bold text-slate-700 mb-5 flex items-center gap-2"><i class="fa-solid fa-coins text-amber-500"></i> Proyeksi Keuangan Klaim BPJS</h3>'
+    +'<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">'
+    +'<div class="bg-blue-50 rounded-xl p-4 text-center"><div class="text-xs font-semibold text-blue-600 mb-1 uppercase">Coverage BPJS</div><div class="text-2xl font-bold text-blue-700">'+(coverage?fmtRp(coverage):'N/A')+'</div><div class="text-xs text-blue-500 mt-1">dari diagnosis_master.claim</div></div>'
+    +'<div class="bg-orange-50 rounded-xl p-4 text-center"><div class="text-xs font-semibold text-orange-600 mb-1 uppercase">Estimasi Biaya RS</div><div class="text-2xl font-bold text-orange-700">'+fmtRp(estCost)+'</div><div class="text-xs text-orange-500 mt-1">Level '+sevLevel+' base + tindakan</div></div>'
+    +'<div class="'+(isProfitable?'bg-green-50':'bg-red-50')+' rounded-xl p-4 text-center"><div class="text-xs font-semibold '+(isProfitable?'text-green-600':'text-red-600')+' mb-1 uppercase">Proyeksi '+(isProfitable?'Profit':'Loss')+'</div><div class="text-2xl font-bold '+(isProfitable?'text-green-700':'text-red-700')+'">'+(isProfitable?'+':'-')+fmtRp(Math.abs(profit))+'</div><div class="text-xs '+(isProfitable?'text-green-500':'text-red-500')+' mt-1">'+(isProfitable?'+'+profPct+'% profitable':Math.abs(profPct)+'% loss')+'</div></div>'
+    +'</div>'
+    +'<div class="rounded-xl p-5 '+(isProfitable?'bg-gradient-to-r from-green-500 to-emerald-600':'bg-gradient-to-r from-red-500 to-red-700')+' text-white text-center mb-4">'
+    +'<div class="text-2xl font-bold mb-1">'+(isProfitable?'PROFITABLE':'LOSS')+'</div>'
+    +'<div class="text-sm opacity-90">'+(isProfitable?'RS mendapat keuntungan '+fmtRp(profit)+' ('+profPct+'%)':'RS merugi '+fmtRp(Math.abs(profit))+' jika klaim disetujui')+'</div></div>'
+    +'<div class="alert alert-warning text-sm"><i class="fa-solid fa-triangle-exclamation flex-shrink-0"></i><div><span class="font-semibold">Jika klaim ditolak:</span> RS menanggung kerugian total <b>'+fmtRp(estCost)+'</b></div></div>'
+    +'</div>'
+    +'<div class="card p-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-table-list text-blue-600"></i> INA-CBG Tariff Breakdown</h3>'
+    +'<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="border-b border-slate-100 bg-slate-50"><th class="text-left px-3 py-2 text-xs font-semibold text-slate-500">Kode</th><th class="text-left px-3 py-2 text-xs font-semibold text-slate-500">Deskripsi</th><th class="text-left px-3 py-2 text-xs font-semibold text-slate-500">INA-CBG</th><th class="text-right px-3 py-2 text-xs font-semibold text-slate-500">Tarif</th></tr></thead><tbody>'
+    +(primary?'<tr class="border-b border-slate-50"><td class="px-3 py-2 mono font-bold text-blue-700">'+primary.code+'</td><td class="px-3 py-2 text-slate-700">'+((primary.title||primary.str||'').substring(0,40))+'</td><td class="px-3 py-2 mono text-xs font-semibold text-green-700">'+(primary.inacbg||'-')+'</td><td class="px-3 py-2 text-right font-semibold text-green-700">'+fmtRp(primary.claim||primary.cost)+'</td></tr>':'')
+    +treats.map(function(t){return '<tr class="border-b border-slate-50"><td class="px-3 py-2 mono font-bold text-indigo-700">'+t.code+'</td><td class="px-3 py-2 text-slate-700">'+((t.title||'').substring(0,40))+'</td><td class="px-3 py-2 mono text-xs font-semibold text-green-700">'+(t.inacbg||'-')+'</td><td class="px-3 py-2 text-right font-semibold">'+fmtRp(t.cost)+'</td></tr>';}).join('')
+    +'</tbody><tfoot><tr class="border-t-2 border-slate-200"><td class="px-3 py-2 font-bold text-slate-800" colspan="3">Total Estimasi</td><td class="px-3 py-2 text-right font-bold text-lg">'+fmtRp(estCost)+'</td></tr></tfoot></table></div></div>'
+    +'<button onclick="switchTab(\'submit\')" class="btn btn-primary text-sm">Final Validation <i class="fa-solid fa-arrow-right ml-1"></i></button>'
+    +'</div>';
+}
+
+// ================================================================
+//  TAB 6: FINAL SUBMIT GATE
+// ================================================================
+function tabSubmit(container){
+  runValidation();
+  var v=state.validation;
+  var primary=state.selectedPrimaryDiagnosis;
+  var secs=state.selectedSecondaryDiagnoses;
+  var coh=checkCoherence();
+  var sevLevel=state.documentChecklist.severity_level||1;
+  var reqDocs=DOC_REQ[sevLevel]||DOC_REQ[1];
+  var required=Object.entries(reqDocs).filter(function(x){return x[1].required;});
+  var missingDocs=required.filter(function(x){return !state.documentChecklist[x[0]];});
+  var hasLinkIssue=state.selectedTreatments.some(function(t){return t.selected&&!checkLinkage(primary&&primary.code,t.inacbg);});
+  var sc=v.riskScore;
+
+  var gates=[
+    {ok:!!primary,label:'Diagnosis Primer',detail:primary?'['+primary.code+'] dipilih dari ICD-10 master':'Belum ada diagnosis primer',critical:true},
+    {ok:!!(primary&&primary.fromMaster),label:'Validasi Master Diagnosis',detail:primary&&primary.fromMaster?'Dipilih dari database master':'Harus dari database, bukan diketik manual',critical:true},
+    {ok:coh.score>=50,label:'Clinical Coherence Check ('+coh.score+'%)',detail:coh.score>=70?'Data SOAP mendukung diagnosis':coh.score>=50?'Koherensi sedang - perlu perhatian':'Data klinis tidak mendukung diagnosis',critical:coh.score<50},
+    {ok:missingDocs.length===0,label:'Kelengkapan Dokumen Level '+sevLevel,detail:missingDocs.length===0?'Semua dokumen wajib sudah lengkap ('+required.length+'/'+required.length+')':missingDocs.length+' dokumen wajib belum: '+missingDocs.map(function(x){return reqDocs[x[0]].label;}).join(', '),critical:true},
+    {ok:!hasLinkIssue,label:'Linkage INA-CBG',detail:hasLinkIssue?'Ada tindakan tanpa linkage INA-CBG valid - tetap bisa submit':'Semua tindakan memiliki linkage valid',critical:false},
+    {ok:sc>=60,label:'Risk Score ('+sc+'%)',detail:sc>=85?'Peluang TINGGI':sc>=60?'Peluang SEDANG - dapat disubmit':'Peluang RENDAH - perlu perbaikan',critical:sc<60},
+  ];
+
+  var critFailed=gates.filter(function(g){return g.critical&&!g.ok;});
+  var canSub=critFailed.length===0;
+
+  container.innerHTML='<div class="space-y-5 max-w-3xl mx-auto">'
+    // Header
+    +'<div class="card p-5 border-2 '+(canSub?'border-green-400 bg-green-50':'border-red-400 bg-red-50')+'">'
+    +'<div class="flex items-center gap-3"><div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 '+(canSub?'bg-green-100':'bg-red-100')+'"><i class="fa-solid '+(canSub?'fa-shield-check text-green-600':'fa-shield-xmark text-red-600')+' text-xl"></i></div>'
+    +'<div><h3 class="font-bold text-slate-800 text-lg">Final Validation Gate</h3>'
+    +'<p class="text-sm '+(canSub?'text-green-700':'text-red-700')+' font-semibold">'+(canSub?'Semua validasi kritis terpenuhi - siap submit':critFailed.length+' validasi kritis belum terpenuhi - submit DIBLOKIR')+'</p></div></div></div>'
+    // Gate items
+    +'<div class="card p-5"><h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-clipboard-list text-blue-600"></i> Checklist Validasi Klaim</h3><div class="space-y-3">'
+    +gates.map(function(g){
+      var bg=g.ok?'bg-green-50 border-green-200':g.critical?'bg-red-50 border-red-200':'bg-amber-50 border-amber-200';
+      var ic=g.ok?'bg-green-500':g.critical?'bg-red-500':'bg-amber-500';
+      var ico=g.ok?'fa-check':g.critical?'fa-times':'fa-exclamation';
+      var tc=g.ok?'text-green-700':g.critical?'text-red-700':'text-amber-700';
+      return '<div class="flex items-start gap-3 p-3 rounded-xl border '+bg+'">'
+        +'<div class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 '+ic+'"><i class="fa-solid '+ico+' text-white text-xs"></i></div>'
+        +'<div class="flex-1"><div class="font-semibold text-slate-800 text-sm">'+g.label+'</div><div class="text-xs '+tc+' mt-0.5">'+g.detail+'</div></div>'
+        +(!g.critical&&!g.ok?'<span class="badge badge-warning text-xs flex-shrink-0">Warning</span>':'')
+        +(g.critical&&!g.ok?'<span class="badge badge-danger text-xs flex-shrink-0">BLOKIR</span>':'')
+        +(g.ok?'<span class="badge badge-success text-xs flex-shrink-0">OK</span>':'')
+        +'</div>';
+    }).join('')
+    +'</div></div>'
+    // Risk score display
+    +'<div class="card p-5"><div class="flex items-center justify-between"><div><h3 class="font-bold text-slate-700">Risk Score Final</h3><p class="text-xs text-slate-500">Peluang klaim disetujui BPJS</p></div><div class="text-right"><div class="text-4xl font-bold '+(sc>=85?'text-green-600':sc>=60?'text-amber-500':'text-red-600')+'">'+sc+'%</div><div class="text-sm font-semibold '+(sc>=85?'text-green-600':sc>=60?'text-amber-500':'text-red-600')+'">'+(sc>=85?'Peluang Diterima: TINGGI':sc>=60?'Peluang Diterima: SEDANG':'Peluang Diterima: RENDAH')+'</div></div></div><div class="mt-3 progress-bar"><div class="progress-fill '+(sc>=85?'bg-green-500':sc>=60?'bg-amber-400':'bg-red-500')+'" style="width:'+sc+'%"></div></div></div>'
+    // Errors
+    +(v.errors.length>0?'<div class="alert alert-danger"><i class="fa-solid fa-circle-exclamation flex-shrink-0 mt-0.5"></i><div><div class="font-semibold mb-1">Masalah yang harus diselesaikan:</div><ul class="list-disc pl-4 space-y-0.5 text-xs">'+v.errors.map(function(e){return '<li>'+e+'</li>';}).join('')+'</ul></div></div>':'')
+    +(v.warnings.length>0?'<div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation flex-shrink-0 mt-0.5"></i><div><div class="font-semibold mb-1">Peringatan (tidak memblokir submit):</div><ul class="list-disc pl-4 space-y-0.5 text-xs">'+v.warnings.map(function(w){return '<li>'+w+'</li>';}).join('')+'</ul></div></div>':'')
+    // Submit button
+    +'<div class="card p-5 text-center">'
+    +(!canSub?'<div class="mb-4 text-sm text-red-600 font-semibold"><i class="fa-solid fa-lock mr-1"></i>Tombol submit dikunci - selesaikan '+critFailed.length+' validasi kritis</div><button id="submit-bpjs-btn" class="btn btn-danger w-full max-w-sm justify-center mx-auto py-4 text-base opacity-50 cursor-not-allowed" disabled><i class="fa-solid fa-lock mr-2"></i>Submit Klaim BPJS (TERKUNCI)</button>'
+      :'<div class="mb-4 alert alert-success text-sm"><i class="fa-solid fa-check-circle flex-shrink-0"></i><span class="font-semibold">Siap submit! Semua validasi kritis terpenuhi.</span></div><button id="submit-bpjs-btn" class="btn btn-success w-full max-w-sm justify-center mx-auto py-4 text-base font-bold shadow-lg" onclick="handleSubmitClaim()"><i class="fa-solid fa-check-circle mr-2"></i>Submit Klaim BPJS</button><p class="text-xs text-slate-400 mt-2">Klik untuk membuat transaksi BPJS</p>')
+    +'</div></div>';
+}
+
+// ================================================================
+//  SUBMIT CLAIM
+// ================================================================
+async function handleSubmitClaim(){
+  runValidation();
+  if(!state.validation.isValid){toast('Validasi belum terpenuhi!','error');return;}
+  if(state.validation.warnings.length>0){
+    confirm2('Konfirmasi Submit','Ada '+state.validation.warnings.length+' peringatan. Tetap lanjutkan?',doSubmit,'warning');
+  } else {
+    doSubmit();
+  }
+}
+async function doSubmit(){
+  var btn=document.getElementById('submit-bpjs-btn');
+  if(btn){btn.innerHTML='<span class="loader"></span> Mengajukan Klaim...';btn.disabled=true;}
+  var primary=state.selectedPrimaryDiagnosis;
+  var analysis=state.currentAnalysis;
+  var coverage=Number(primary&&(primary.claim||primary.cost)||0);
+  var treats=state.selectedTreatments.filter(function(t){return t.selected;});
+  var treatCost=treats.reduce(function(s,t){return s+Number(t.cost||0);},0);
+  var sevLevel=state.documentChecklist.severity_level||1;
+  var baseCost=[0,1500000,2500000,5000000][sevLevel];
+  var estCost=baseCost+treatCost;
+  var profit=coverage-estCost;
+  var payload={
+    patient_name:analysis&&analysis.patient_name||'',
+    encounter_number:analysis&&(analysis.encounter_number||analysis.id)||'',
+    service_type:analysis&&analysis.service_type||'',
+    severity_level:sevLevel,status:'Pending',
+    coverage_amount:coverage,cost_amount:estCost,profit_amount:profit,
+    primary_diagnosis:primary&&primary.code,
+    secondary_diagnoses:state.selectedSecondaryDiagnoses.map(function(d){return d.code;}),
+    documents:Object.assign({},state.documentChecklist),
+    risk_score:state.validation.riskScore,
+  };
+  try {
+    var res=await apiFetch('/transactions',{method:'POST',body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error((res.data&&res.data.message)||'Gagal membuat transaksi');
+    toast('Klaim BPJS berhasil diajukan!','success',4000);
+    resetDiagState();
+    setTimeout(function(){navigateTo('transactions');},1500);
+  } catch(err){
+    toast('Gagal: '+err.message,'error');
+    if(btn){btn.innerHTML='<i class="fa-solid fa-check-circle mr-2"></i>Submit Klaim BPJS';btn.disabled=false;}
+  }
+}
+
+// ================================================================
+//  INIT
+// ================================================================
+document.getElementById('diag-search-modal').addEventListener('click',function(e){if(e.target===this)closeDiagModal();});
+document.getElementById('confirm-modal').addEventListener('click',function(e){if(e.target===this)closeConfirm();});
+
+function init(){
+  if(!state.token){
+    document.getElementById('login-modal').style.display='flex';
+  } else {
+    document.getElementById('login-modal').style.display='none';
+    document.getElementById('sidebar-username').textContent=state.user&&(state.user.name||state.user.username)||'Dokter';
+    navigateTo('dashboard');
+  }
+}
+init();
+</script>
+</body>
+</html>

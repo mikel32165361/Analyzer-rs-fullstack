@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const { OpenAI } = require('openai');
 const { findTariffAllByInacbg } = require("../repositories/tariffRepository");
 const { findInacbgByCodeDiagnosa, findInacbgByTindakanDiagnosa } = require('../repositories/inaGrouper4SpecialGroupsRepository');
@@ -267,7 +267,7 @@ const getRecommendation = async (inputan) => {
     ];
 
     const completion = await openrouter.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: process.env.MODEL_AI || "gpt-4o-mini",
       messages,
       temperature: 0,
       top_p: 1,
@@ -615,12 +615,13 @@ const getRecommendationV1 = async (inputData) => {
     ];
 
     const completion = await openrouter.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: process.env.MODEL_AI || "gpt-4o-mini",
       messages,
       temperature: 0,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
+      response_format: { type: "json_object" }
     });
 
     let reply = completion.choices?.[0]?.message?.content;
@@ -630,7 +631,8 @@ const getRecommendationV1 = async (inputData) => {
     }
 
     try {
-      const jsonResponse = JSON.parse(reply);
+      const cleanedReply = extractJsonFromContent(reply);
+      const jsonResponse = JSON.parse(cleanedReply);
       
       const diagnosisPrimerCodes = jsonResponse.ai_analysis_recommendations.diagnosis_primer.map(item => item.kode);
       const diagnosisSekunderCodes = jsonResponse.ai_analysis_recommendations.diagnosis_sekunder.map(item => item.kode);
@@ -687,24 +689,7 @@ const getRecommendationV1 = async (inputData) => {
 
       return finalResponse;
     } catch (jsonError) {
-      throw new Error(`Response format tidak valid: ${{
-        ai_analysis_recommendations: {
-          error: "Response format tidak valid",
-          raw_response: reply,
-          diagnosis_primer: [],
-          diagnosis_sekunder: [],
-          tindakan_medis: [],
-          severity_level: 1,
-          severity_justifikasi: "Tidak dapat menentukan severity",
-          kode_inacbg_utama: "V",
-          justifikasi_inacbg: "Tidak dapat menentukan kategori",
-          resume_medis: false,
-          hasil_laboratorium: false,
-          hasil_radiologi: false,
-          lembar_observasi: false,
-          jenis_pelayanan: "Tidak diketahui"
-        }
-      }}`);
+      throw new Error(`Response format tidak valid: ${jsonError.message}`);
     }
 
   } catch (error) {
@@ -771,12 +756,13 @@ const updateMRConso = async () => {
     ];
 
     const completion = await openrouter.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: process.env.MODEL_AI || "gpt-4o-mini",
       messages,
       temperature: 0,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
+      response_format: { type: "json_object" }
     });
 
     const content = completion.choices?.[0]?.message?.content;
@@ -811,8 +797,29 @@ const updateMRConso = async () => {
 }
 
 const extractJsonFromContent = (content) => {
-  const match = content.match(/```json\s*([\s\S]*?)\s*```/);
-  return match ? match[1].trim() : content.trim();
+  let match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (match) {
+    try {
+      JSON.parse(match[1].trim());
+      return match[1].trim();
+    } catch (e) {}
+  }
+  
+  // Try to find valid JSON starting from each brace until success
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '{' || content[i] === '[') {
+      const lastBrace = content[i] === '{' ? content.lastIndexOf('}') : content.lastIndexOf(']');
+      if (lastBrace > i) {
+        const potentialJson = content.substring(i, lastBrace + 1);
+        try {
+          JSON.parse(potentialJson);
+          return potentialJson;
+        } catch (e) {}
+      }
+    }
+  }
+  
+  return content.trim();
 };
 
 

@@ -146,7 +146,7 @@ const get = async (id) => {
 }
 
 const getByEncounter = async (encounterNumber) => {
-    return AiAnalysis.findAll({
+    return AiAnalysis.findOne({
         attributes: [
             'id',
             'patient_id',
@@ -165,7 +165,7 @@ const getByEncounter = async (encounterNumber) => {
             'created_at',
         ],
         where: { 
-            encounter_number: encounterNumber 
+            id: encounterNumber 
         },
         include: [
             {
@@ -212,10 +212,6 @@ const getByEncounter = async (encounterNumber) => {
                 ],
             }
         ],
-        order: [
-            ['id', 'DESC']
-        ],
-        limit: 1,
     })
 }
 

@@ -54,13 +54,13 @@ exports.recomendation = async (req, res) => {
     } catch (error) {
         handleError('error', {
             type: error.name,
-            message: error.message,
+            message: error.message || String(error),
             stack: error.stack
         });
 
         return res.status(500).json({ 
             status: 500,
-            message: `Gagal: ${error.message}` });
+            message: `Gagal: ${error.message || String(error)}` });
     }
 }
 
@@ -86,13 +86,13 @@ exports.recomendationV1 = async (req, res) => {
     } catch (error) {
         handleError('error', {
             type: error.name,
-            message: error.message,
+            message: error.message || String(error),
             stack: error.stack
         });
 
         return res.status(500).json({ 
             status: 500,
-            message: `Gagal: ${error.message}` });
+            message: `Gagal: ${error.message || String(error)}` });
     }
 }
 

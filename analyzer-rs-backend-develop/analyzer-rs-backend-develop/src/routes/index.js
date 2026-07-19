@@ -49,8 +49,16 @@ router.get('/transactions/:id', transactionController.getTransactionById);
 // ====================
 const v1Router = express.Router();
 
+// Custom middleware to support both JWT and API Key
+const mixedAuth = (req, res, next) => {
+    if (req.headers.authorization) {
+        return authenticateJWT(req, res, next);
+    }
+    return authMiddleware(req, res, next);
+};
+
 // recomendation
-v1Router.post('/recomendation', authMiddleware, validate(recommendationSchema) , diagnosisController.recomendationV1);
+v1Router.post('/recomendation', mixedAuth, validate(recommendationSchema) , diagnosisController.recomendationV1);
 
 // service
 v1Router.get('/service/encounters', authenticateJWT, analysisController.getAllEncounter)

@@ -53,7 +53,7 @@ const recommendationSchema = Joi.object({
     .description('Patient age in years'),
     
   weight: Joi.number()
-    .positive()
+    .min(0)
     .max(1000)
     .optional()
     .description('Patient weight in kg'),
