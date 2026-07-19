@@ -53,4 +53,7 @@ export const createTransaction = (data) => api.post('/transactions', data);
 export const getMrconso = (params) => api.get('/v1/mrconso', { params });
 export const getMrconsoIndo = (params) => api.get('/v1/mrconso_indo', { params });
 
+// DASHBOARD
+export const getDashboardSummary = () => api.get('/v1/dashboard/summary');
+
 export default api;

@@ -1,11 +1,14 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ValidationProvider } from './context/ValidationContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import EncountersPage from './pages/EncountersPage';
 import RecommendationPage from './pages/RecommendationPage';
 import TransactionsPage from './pages/TransactionsPage';
 import ICDSearchPage from './pages/ICDSearchPage';
+import NewAnalysisPage from './pages/NewAnalysisPage';
+import DiagnosisValidationPage from './pages/DiagnosisValidationPage';
 import './index.css';
 
 function PrivateRoute({ children }) {
@@ -29,6 +32,7 @@ function Sidebar() {
 
   const navItems = [
     { to: '/', icon: '📊', label: 'Dashboard', end: true },
+    { to: '/new-analysis', icon: '📝', label: 'Analisis Baru' },
     { to: '/encounters', icon: '👥', label: 'Daftar Pasien' },
     { to: '/transactions', icon: '💊', label: 'Transaksi BPJS' },
     { to: '/icd-search', icon: '🔬', label: 'Pencarian ICD' },
@@ -59,14 +63,14 @@ function Sidebar() {
         ))}
 
         <div className="nav-section-label" style={{ marginTop: 20 }}>AI Tools</div>
-        <div
-          className="nav-item"
-          style={{ cursor: 'default', opacity: 0.6 }}
+        <NavLink
+          to="/validation"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >
-          <span className="nav-icon">🤖</span>
-          AI Rekomendasi
-          <span className="nav-badge">v1</span>
-        </div>
+          <span className="nav-icon">🛡️</span>
+          Validasi Diagnosis
+          <span className="nav-badge">BPJS</span>
+        </NavLink>
       </nav>
 
       <div className="sidebar-footer">
@@ -130,6 +134,13 @@ function AppRoutes() {
           </Layout>
         </PrivateRoute>
       } />
+      <Route path="/new-analysis" element={
+        <PrivateRoute>
+          <Layout title="Analisis Baru" subtitle="Input data pasien dan generate AI recommendation">
+            <NewAnalysisPage />
+          </Layout>
+        </PrivateRoute>
+      } />
       <Route path="/encounters" element={
         <PrivateRoute>
           <Layout title="Daftar Pasien" subtitle="Data encounter & pemeriksaan pasien">
@@ -141,6 +152,20 @@ function AppRoutes() {
         <PrivateRoute>
           <Layout title="AI Recommendation" subtitle="Analisis klinis berbasis AI">
             <RecommendationPage />
+          </Layout>
+        </PrivateRoute>
+      } />
+      <Route path="/validation" element={
+        <PrivateRoute>
+          <Layout title="Validasi Diagnosis" subtitle="Pencegahan penolakan klaim BPJS">
+            <DiagnosisValidationPage />
+          </Layout>
+        </PrivateRoute>
+      } />
+      <Route path="/validation/:encId" element={
+        <PrivateRoute>
+          <Layout title="Validasi Diagnosis" subtitle="Pencegahan penolakan klaim BPJS">
+            <DiagnosisValidationPage />
           </Layout>
         </PrivateRoute>
       } />
@@ -167,7 +192,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ValidationProvider>
+          <AppRoutes />
+        </ValidationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

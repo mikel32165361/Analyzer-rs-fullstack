@@ -709,3 +709,372 @@ tbody tr:last-child td { border-bottom: none; }
   to { opacity: 1; transform: translateX(0); }
 }
 .slide-in { animation: slide-in 0.3s ease forwards; }
+
+/* ===================== BPJS SAFE — TABS ===================== */
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-btn:hover:not(.active) { background: var(--bg-card-hover); color: var(--text-primary); }
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  box-shadow: 0 2px 10px rgba(59,130,246,0.35);
+}
+
+/* ===================== BPJS SAFE — DIAGNOSIS CARDS ===================== */
+.diag-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 8px;
+  transition: var(--transition);
+  cursor: pointer;
+  background: var(--bg-card);
+}
+.diag-card:hover { border-color: var(--accent-primary); background: var(--bg-card-hover); }
+.diag-card.selected { border-color: var(--accent-success); background: rgba(16,185,129,0.05); }
+.diag-card.selected-primary { border-color: var(--accent-primary); background: rgba(59,130,246,0.06); }
+.diag-card.ai-rec { border-left: 3px solid var(--accent-primary); }
+.diag-card.ai-rec-warn { border-left: 3px solid var(--accent-warning); }
+
+/* ===================== BPJS SAFE — COLORED CARDS ===================== */
+.card-ai { border-left: 4px solid var(--accent-primary); }
+.card-doctor { border-left: 4px solid var(--accent-success); }
+.card-warn { border-left: 4px solid var(--accent-danger); }
+.card-amber { border-left: 4px solid var(--accent-warning); }
+
+/* ===================== BPJS SAFE — RISK RING ===================== */
+.risk-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.risk-ring svg { transform: rotate(-90deg); }
+.risk-ring-label {
+  position: absolute;
+  text-align: center;
+}
+
+/* ===================== BPJS SAFE — PROGRESS BAR ===================== */
+.progress-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+.progress-bar-fill.green { background: linear-gradient(90deg, #059669, #10b981); }
+.progress-bar-fill.red   { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.progress-bar-fill.amber { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.progress-bar-fill.blue  { background: linear-gradient(90deg, #1e40af, #3b82f6); }
+
+/* ===================== BPJS SAFE — INLINE ALERTS ===================== */
+.inline-alert {
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+}
+.inline-alert.alert-danger  { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+.inline-alert.alert-warning { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); color: #fcd34d; }
+.inline-alert.alert-success { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); color: #6ee7b7; }
+.inline-alert.alert-info    { background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2); color: #67e8f9; }
+
+/* ===================== BPJS SAFE — STAT GRADIENT CARDS ===================== */
+.stat-card-grad {
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card-grad::after {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+}
+.stat-card-grad.grad-blue  { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+.stat-card-grad.grad-green { background: linear-gradient(135deg, #047857, #10b981); }
+.stat-card-grad.grad-amber { background: linear-gradient(135deg, #b45309, #f59e0b); }
+.stat-card-grad.grad-red   { background: linear-gradient(135deg, #b91c1c, #ef4444); }
+.stat-card-grad .stat-grad-icon {
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+.stat-card-grad .stat-grad-val { font-size: 28px; font-weight: 800; line-height: 1; }
+.stat-card-grad .stat-grad-label { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+.stat-card-grad .stat-grad-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.2);
+  margin-bottom: 8px;
+}
+
+/* ===================== BPJS SAFE — DOCUMENT CHECKLIST ===================== */
+.doc-item {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  transition: var(--transition);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+.doc-item:hover { border-color: var(--accent-primary); }
+.doc-item.required-ok { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.04); }
+.doc-item.required-missing { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.04); }
+.doc-item.recommended { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.03); }
+
+/* ===================== BPJS SAFE — VALIDATION GATE ===================== */
+.gate-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+}
+.gate-item.pass { border-color: rgba(16,185,129,0.25); background: rgba(16,185,129,0.04); }
+.gate-item.fail { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.04); }
+.gate-item.warn { border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.04); }
+.gate-icon {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  color: white;
+  font-weight: 700;
+}
+.gate-icon.pass { background: var(--accent-success); }
+.gate-icon.fail { background: var(--accent-danger); }
+.gate-icon.warn { background: var(--accent-warning); }
+
+/* ===================== BPJS SAFE — QUICK ACTIONS ===================== */
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* ===================== BPJS SAFE — FINANCIAL ===================== */
+.finance-card {
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+}
+.finance-card.blue  { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); }
+.finance-card.amber { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); }
+.finance-card.green { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); }
+.finance-card.red   { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+.finance-card .fin-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.finance-card .fin-value { font-size: 22px; font-weight: 800; }
+.finance-card .fin-sub { font-size: 11px; margin-top: 4px; opacity: 0.7; }
+
+.profit-banner {
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+  color: white;
+  margin: 16px 0;
+}
+.profit-banner.profitable { background: linear-gradient(135deg, #059669, #10b981); }
+.profit-banner.loss       { background: linear-gradient(135deg, #dc2626, #ef4444); }
+
+/* ===================== BPJS SAFE — FORM VITAL SIGNS ===================== */
+.vital-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.vital-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.vital-field .unit { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.vital-field input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: var(--transition);
+}
+.vital-field input:focus { border-color: var(--accent-primary); outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+.soap-section {
+  margin-bottom: 16px;
+}
+.soap-section label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.soap-section textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  resize: vertical;
+  min-height: 70px;
+  transition: var(--transition);
+}
+.soap-section textarea:focus { border-color: var(--accent-primary); outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.field-required::after { content: ' *'; color: var(--accent-danger); }
+
+/* ===================== BPJS SAFE — MODAL ===================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fade-in 0.2s ease;
+}
+.modal-content {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 640px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  animation: fade-in 0.25s ease;
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h3 { font-size: 15px; font-weight: 700; }
+.modal-body { flex: 1; overflow-y: auto; padding: 16px; }
+.modal-footer { padding: 12px 20px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); }
+.modal-close {
+  width: 30px; height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: var(--transition);
+}
+.modal-close:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+.search-result-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: var(--transition);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--bg-card-hover); }
+
+/* ===================== BPJS SAFE — ADDITIONAL BADGES ===================== */
+.badge-danger { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+.badge-success-solid { background: var(--accent-success); color: white; }
+.badge-danger-solid { background: var(--accent-danger); color: white; }
+.badge-primary-solid { background: var(--accent-primary); color: white; }
+.badge-warning-solid { background: var(--accent-warning); color: white; }
+
+/* ===================== BPJS SAFE — RESPONSIVE GRID ===================== */
+.grid-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-cols-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+@media (max-width: 1024px) {
+  .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .grid-cols-4, .grid-cols-3, .grid-cols-2 { grid-template-columns: 1fr; }
+}
+
+/* ===================== BPJS SAFE — TOAST ===================== */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast-item {
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-lg);
+  animation: fade-in 0.3s ease;
+  min-width: 240px;
+}
+.toast-item.success { background: var(--accent-success); }
+.toast-item.error   { background: var(--accent-danger); }
+.toast-item.warning { background: var(--accent-warning); }
+.toast-item.info    { background: var(--accent-info); }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
+  50% { opacity: 0.5; box-shadow: 0 0 8px currentColor; }
+}
+

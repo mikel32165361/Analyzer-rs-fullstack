@@ -141,12 +141,22 @@ export default function EncountersPage() {
                       {enc.created_at ? new Date(enc.created_at).toLocaleDateString('id-ID') : '—'}
                     </td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => navigate(`/encounters/${enc.id}`)}
-                      >
-                        🤖 AI
-                      </button>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => navigate(`/validation/${enc.id}`)}
+                          style={{ fontSize: 10 }}
+                        >
+                          🔍 Validasi
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => navigate(`/encounters/${enc.id}`)}
+                          style={{ fontSize: 10 }}
+                        >
+                          🤖 AI
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
